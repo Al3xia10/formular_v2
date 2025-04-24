@@ -13,9 +13,14 @@ export default function AttendanceFormPage() {
     if (status === "unauthenticated") {
       router.push("/auth/signin");
     }
-  }, [status]);
+  }, [status, router]);
 
   if (status === "loading") return <div>Loading...</div>;
+
+  // Verifică dacă session este null sau nu
+  if (!session) {
+    return <div>Nu ești autentificat. Te rugăm să te autentifici.</div>;
+  }
 
   const handleSubmit = () => {
     console.log("Prezență înregistrată pentru:", session.user.email);

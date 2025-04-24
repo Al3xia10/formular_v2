@@ -6,15 +6,25 @@ export default function ScanPage() {
   const { data: session, status } = useSession();
   const [nume, setNume] = useState("");
   const [trimis, setTrimis] = useState(false);
+  const [error, setError] = useState(null); // Gestionarea erorilor
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const raspuns = await fetch("/api/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: session.user.email, nume }),
-    });
-    if (raspuns.ok) setTrimis(true);
+    try {
+      const raspuns = await fetch("/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: session.user.email, nume }),
+      });
+      if (raspuns.ok) {
+        setTrimis(true);
+        setError(null); // Resetăm eroarea
+      } else {
+        throw new Error("A apărut o eroare la trimiterea prezenței");
+      }
+    } catch (err) {
+      setError(err.message); // Setăm eroarea
+    }
   };
 
   if (status === "loading") return <p>Se încarcă...</p>;
@@ -60,6 +70,7 @@ export default function ScanPage() {
           </button>
         </form>
       )}
+      {error && <p className="text-red-600 font-semibold mt-4">{error}</p>}
     </div>
   );
 }
