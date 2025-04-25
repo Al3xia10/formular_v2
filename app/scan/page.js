@@ -8,7 +8,7 @@ export default function ScanPage() {
     nume: "",
     grupa: "",
     an: "",
-    seria: "",
+    serie: "",
     disciplina: "",
     tipDisciplina: "",
   });
@@ -94,8 +94,8 @@ export default function ScanPage() {
             className="border px-3 py-2 rounded-md"
           />
           <input
-            name="seria"
-            value={formData.seria}
+            name="serie"
+            value={formData.serie}
             onChange={handleChange}
             required
             placeholder="Seria"
