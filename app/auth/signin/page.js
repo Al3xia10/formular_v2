@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 
 export default function SignInPage() {
   const handleLogin = () => {
-    signIn("google");
+    signIn("google", { callbackUrl: "/scan" }); // sau "/form";
   };
 
   return (
