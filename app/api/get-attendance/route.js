@@ -44,7 +44,7 @@ export async function POST(req) {
     await writeFile(filePath, JSON.stringify(attendance, null, 2));
 
     // Actualizează fișierul Excel cu noile date
-    generateOrUpdateExcel(attendance);
+    await generateOrUpdateExcel(attendance);
 
     return new Response(JSON.stringify({ mesaj: "Salvat cu succes!" }), {
       status: 200,
