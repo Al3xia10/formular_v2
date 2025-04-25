@@ -81,5 +81,16 @@
     "tipDisciplina": "Curs",
     "data": "25.04.2025",
     "ora": "21:01:35"
+  },
+  {
+    "nume": "Alexia",
+    "email": "ioana-alexia.badea27@s.fpse.unibuc.ro",
+    "grupa": "1",
+    "an": "2",
+    "serie": "3",
+    "disciplina": "SSV",
+    "tipDisciplina": "Curs",
+    "data": "25.04.2025",
+    "ora": "21:33:23"
   }
 ]
