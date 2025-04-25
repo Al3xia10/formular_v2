@@ -1,6 +1,6 @@
 import { writeFile, readFile } from "fs/promises";
 import path from "path";
-import * as XLSX from "xlsx";
+import { generateOrUpdateExcel } from "@/lib/excel"; // Importă funcția de generare/excel
 
 export async function POST(req) {
   try {
@@ -22,18 +22,10 @@ export async function POST(req) {
     }
 
     const filePath = path.join(process.cwd(), "data", "attendance.json");
-    const excelPath = path.join(process.cwd(), "data", "attendance.xlsx");
+    const fileData = await readFile(filePath, "utf8");
+    const attendance = JSON.parse(fileData);
 
-    let attendance = [];
-
-    try {
-      const fileData = await readFile(filePath, "utf8");
-      attendance = JSON.parse(fileData);
-    } catch {
-      // Dacă fișierul nu există, începem cu un array gol
-      attendance = [];
-    }
-
+    // Adaugă data și ora
     const now = new Date();
     const newEntry = {
       nume,
@@ -49,22 +41,14 @@ export async function POST(req) {
 
     attendance.push(newEntry);
 
-    // Salvează în JSON
     await writeFile(filePath, JSON.stringify(attendance, null, 2));
 
-    // Generează fișier Excel
-    const worksheet = XLSX.utils.json_to_sheet(attendance);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Prezențe");
+    // Actualizează fișierul Excel cu noile date
+    await generateOrUpdateExcel(attendance);
 
-    XLSX.writeFile(workbook, excelPath);
-
-    return new Response(
-      JSON.stringify({ mesaj: "Prezența a fost salvată cu succes!" }),
-      {
-        status: 200,
-      }
-    );
+    return new Response(JSON.stringify({ mesaj: "Salvat cu succes!" }), {
+      status: 200,
+    });
   } catch (error) {
     console.error("Eroare:", error);
     return new Response(JSON.stringify({ error: "Eroare la salvare" }), {
