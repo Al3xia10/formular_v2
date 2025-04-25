@@ -15,10 +15,11 @@ export default function AttendanceFormPage() {
     }
   }, [status]);
 
-  if (status === "loading") return <div>Se încarcă...</div>;
+  if (status === "loading" || !session) return <div>Se încarcă...</div>;
 
   const handleSubmit = () => {
-    console.log("Prezență înregistrată pentru:", session.user.email);
+    console.log("Prezență înregistrată pentru:", session?.user?.email);
+
     setSubmitted(true);
   };
 
@@ -30,8 +31,10 @@ export default function AttendanceFormPage() {
       ) : (
         <>
           <p className="mb-4">
-            Ești autentificat ca <strong>{session.user.email}</strong>.
+            Ești autentificat ca{" "}
+            <strong>{session?.user?.email || "Utilizator necunoscut"}</strong>.
           </p>
+
           <button
             onClick={handleSubmit}
             className="bg-green-600 text-white px-4 py-2 rounded-md"
