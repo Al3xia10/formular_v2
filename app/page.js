@@ -7,8 +7,7 @@ export default function HomePage() {
   const [qrCodeUrl, setQrCodeUrl] = useState("");
 
   useEffect(() => {
-    const url =
-      "https://formular-v2-kgupyvsnh-al3xia10s-projects.vercel.app/scan"; // Asigură-te că acest link este corect
+    const url = "https://formular-v2.vercel.app/scan"; // Asigură-te că acest link este corect
     QRCode.toDataURL(url)
       .then((generatedUrl) => setQrCodeUrl(generatedUrl))
       .catch((err) => console.error("Eroare generare QR:", err));
