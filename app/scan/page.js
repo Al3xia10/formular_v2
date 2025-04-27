@@ -28,11 +28,18 @@ export default function ScanPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: session.user.email, ...formData }),
       });
+      const raspunsData = await raspuns.json();
+
+      // Afișează răspunsul complet pentru a verifica ce se întâmplă
+      console.log(raspunsData); // Log pentru a verifica răspunsul complet
+
       if (raspuns.ok) {
         setTrimis(true);
         setError(null);
       } else {
-        throw new Error("A apărut o eroare la trimiterea prezenței");
+        throw new Error(
+          raspunsData.error || "A apărut o eroare la trimiterea prezenței"
+        );
       }
     } catch (err) {
       setError(err.message);

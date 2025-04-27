@@ -29,8 +29,9 @@ export async function POST(req) {
     try {
       const fileData = await readFile(jsonPath, "utf8");
       attendance = JSON.parse(fileData);
-    } catch {
-      attendance = [];
+    } catch (err) {
+      console.error("Eroare la citirea fișierului JSON:", err);
+      attendance = []; // Dacă fișierul nu există sau este corupt, creează un array gol
     }
 
     // Creează intrarea nouă
@@ -51,8 +52,8 @@ export async function POST(req) {
     attendance.push(newEntry);
     await writeFile(jsonPath, JSON.stringify(attendance, null, 2));
 
-    // Actualizează Excelul
-    await generateOrUpdateExcel(attendance);
+    // Comentat temporar pentru a verifica dacă există vreo eroare la actualizarea Excel-ului
+    // await generateOrUpdateExcel(attendance);
 
     return new Response(
       JSON.stringify({ mesaj: "Prezența a fost salvată cu succes!" }),
