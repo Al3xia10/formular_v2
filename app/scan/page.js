@@ -24,15 +24,12 @@ export default function ScanPage() {
     e.preventDefault();
     try {
       const raspuns = await fetch("/api/submit", {
-        method: "POST",
+        method: "POST", // Asigură-te că este POST
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: session.user.email, ...formData }),
+        body: JSON.stringify({ email: session.user.email, ...formData }), // Trimite datele corecte
       });
       const raspunsData = await raspuns.json();
-
-      // Afișează răspunsul complet pentru a verifica ce se întâmplă
-      console.log(raspunsData); // Log pentru a verifica răspunsul complet
-
+      console.log(raspunsData); // Verifică ce răspuns primești de la server
       if (raspuns.ok) {
         setTrimis(true);
         setError(null);
