@@ -36,8 +36,8 @@ export async function POST(req) {
         serie,
         disciplina,
         tipDisciplina,
-        data: now.toLocaleDateString("ro-RO"),
-        ora: now.toLocaleTimeString("ro-RO"),
+        data: now.toISOString().split("T")[0], // Formatul YYYY-MM-DD
+        ora: now.toISOString().split("T")[1].slice(0, 8), // Formatul HH:MM:SS
       },
     ]);
 
