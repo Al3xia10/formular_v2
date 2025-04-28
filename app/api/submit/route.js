@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  process.env.SUPABASE_URL, // URL-ul Supabase (necesar pentru conexiune)
-  process.env.SUPABASE_SERVICE_ROLE_KEY // Cheia de serviciu pentru acces server-side
+  process.env.SUPABASE_URL, // Asigură-te că aici folosești variabila corect
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export async function POST(req) {
