@@ -1,6 +1,9 @@
-import { writeFile, readFile } from "fs/promises";
-import path from "path";
-import { generateOrUpdateExcel } from "@/lib/excel"; // Funcția pentru Excel
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export async function POST(req) {
   try {
@@ -22,37 +25,31 @@ export async function POST(req) {
       });
     }
 
-    const jsonPath = path.join(process.cwd(), "data", "attendance.json");
-
-    // Creează fișierul JSON dacă nu există
-    let attendance = [];
-    try {
-      const fileData = await readFile(jsonPath, "utf8");
-      attendance = JSON.parse(fileData);
-    } catch {
-      attendance = [];
-    }
-
     // Creează intrarea nouă
     const now = new Date();
-    const newEntry = {
-      nume,
-      email,
-      grupa,
-      an,
-      serie,
-      disciplina,
-      tipDisciplina,
-      data: now.toLocaleDateString("ro-RO"),
-      ora: now.toLocaleTimeString("ro-RO"),
-    };
+    const { data, error } = await supabase.from("attendance").insert([
+      {
+        email,
+        nume,
+        grupa,
+        an,
+        serie,
+        disciplina,
+        tipDisciplina,
+        data: now.toLocaleDateString("ro-RO"),
+        ora: now.toLocaleTimeString("ro-RO"),
+      },
+    ]);
 
-    // Salvează în JSON
-    attendance.push(newEntry);
-    fs.writeFileSync(jsonPath, JSON.stringify(attendance, null, 2));
-
-    // Comentat temporar pentru a verifica dacă există vreo eroare la actualizarea Excel-ului
-    // await generateOrUpdateExcel(attendance);
+    if (error) {
+      console.error("Eroare la salvare în Supabase:", error);
+      return new Response(
+        JSON.stringify({ error: "Eroare la salvare în Supabase" }),
+        {
+          status: 500,
+        }
+      );
+    }
 
     return new Response(
       JSON.stringify({ mesaj: "Prezența a fost salvată cu succes!" }),
@@ -61,12 +58,9 @@ export async function POST(req) {
       }
     );
   } catch (error) {
-    console.error("Eroare la salvare:", error);
-    return new Response(
-      JSON.stringify({ error: "Eroare internă la salvare" }),
-      {
-        status: 500,
-      }
-    );
+    console.error("Eroare server:", error);
+    return new Response(JSON.stringify({ error: "Eroare server" }), {
+      status: 500,
+    });
   }
 }
