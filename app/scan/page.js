@@ -24,12 +24,12 @@ export default function ScanPage() {
     e.preventDefault();
     try {
       const raspuns = await fetch("/api/submit", {
-        method: "POST", // Asigură-te că este POST
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: session.user.email, ...formData }), // Trimite datele corecte
+        body: JSON.stringify({ email: session.user.email, ...formData }),
       });
       const raspunsData = await raspuns.json();
-      console.log(raspunsData); // Verifică ce răspuns primești de la server
+      console.log(raspunsData);
       if (raspuns.ok) {
         setTrimis(true);
         setError(null);
@@ -105,7 +105,6 @@ export default function ScanPage() {
             placeholder="Seria"
             className="border px-3 py-2 rounded-md"
           />
-
           <select
             name="disciplina"
             value={formData.disciplina}

@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.SUPABASE_URL, // URL-ul Supabase (necesar pentru conexiune)
+  process.env.SUPABASE_SERVICE_ROLE_KEY // Cheia de serviciu pentru acces server-side
 );
 
 export async function POST(req) {
@@ -25,7 +25,7 @@ export async function POST(req) {
       });
     }
 
-    // Creează intrarea nouă
+    // Creează intrarea nouă în tabelul "attendance"
     const now = new Date();
     const { data, error } = await supabase.from("attendance").insert([
       {
@@ -45,17 +45,13 @@ export async function POST(req) {
       console.error("Eroare la salvare în Supabase:", error);
       return new Response(
         JSON.stringify({ error: "Eroare la salvare în Supabase" }),
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
 
     return new Response(
       JSON.stringify({ mesaj: "Prezența a fost salvată cu succes!" }),
-      {
-        status: 200,
-      }
+      { status: 200 }
     );
   } catch (error) {
     console.error("Eroare server:", error);
