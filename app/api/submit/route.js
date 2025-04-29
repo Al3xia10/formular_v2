@@ -6,7 +6,7 @@ const supabase = createClient(
 );
 
 const GOOGLE_SHEETS_WEBHOOK_URL =
-  "https://script.google.com/macros/s/AKfycbxgEF83JNA6oiuJ0qI3Lu4tIq9eMUq3nbEydFdBviil-sU4QCnXgmsZoNwV_dhyE97Oug/exec"; // 🔁 Înlocuiește cu URL-ul tău real
+  "https://script.google.com/macros/s/AKfycbyR18q1y2JkptBjY6c38Mb6NS1Ryru3il_ejC-ziq9flWaTxIe3Q8WxTRTUYXb0q72-Ug/exec"; // 🔁 Înlocuiește cu URL-ul tău real
 
 export async function POST(req) {
   try {
