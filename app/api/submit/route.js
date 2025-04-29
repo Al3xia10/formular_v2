@@ -35,9 +35,9 @@ export async function POST(req) {
         an,
         serie,
         disciplina,
-        tipDisciplina,
-        data: now.toISOString().split("T")[0], // Formatul YYYY-MM-DD
-        ora: now.toISOString().split("T")[1].slice(0, 8), // Formatul HH:MM:SS
+        tip_disciplina: tipDisciplina, // denumire corectă conform tabelului
+        data: now.toISOString().split("T")[0],
+        ora: now.toISOString().split("T")[1].slice(0, 8),
       },
     ]);
 
