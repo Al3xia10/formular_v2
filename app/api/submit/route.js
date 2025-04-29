@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  process.env.SUPABASE_URL, // Asigură-te că aici folosești variabila corect
+  process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
@@ -25,7 +25,6 @@ export async function POST(req) {
       });
     }
 
-    // Creează intrarea nouă în tabelul "attendance"
     const now = new Date();
     const { data, error } = await supabase.from("attendance").insert([
       {
@@ -35,9 +34,9 @@ export async function POST(req) {
         an,
         serie,
         disciplina,
-        tipDisciplina,
-        data: now.toISOString().split("T")[0], // Formatul YYYY-MM-DD
-        ora: now.toISOString().split("T")[1].slice(0, 8), // Formatul HH:MM:SS
+        tip_disciplina: tipDisciplina, // 🟢 denumirea corectă conform tabelului SQL
+        data: now.toISOString().split("T")[0], // YYYY-MM-DD
+        ora: now.toISOString().split("T")[1].slice(0, 8), // HH:MM:SS
       },
     ]);
 
