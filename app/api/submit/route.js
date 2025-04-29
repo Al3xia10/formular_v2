@@ -1,18 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  process.env.SUPABASE_URL,
+  process.env.SUPABASE_URL, // Asigură-te că aici folosești variabila corect
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
-
-const GOOGLE_SHEETS_WEBHOOK_URL =
-  "https://script.google.com/macros/s/AKfycbyR18q1y2JkptBjY6c38Mb6NS1Ryru3il_ejC-ziq9flWaTxIe3Q8WxTRTUYXb0q72-Ug/exec"; // 🔁 Înlocuiește cu URL-ul tău real
 
 export async function POST(req) {
   try {
     const { email, nume, grupa, an, serie, disciplina, tipDisciplina } =
       await req.json();
 
+    // Verificare date lipsă
     if (
       !email ||
       !nume ||
@@ -27,10 +25,8 @@ export async function POST(req) {
       });
     }
 
+    // Creează intrarea nouă în tabelul "attendance"
     const now = new Date();
-    const dateFormatted = now.toISOString().split("T")[0];
-    const timeFormatted = now.toISOString().split("T")[1].slice(0, 8);
-
     const { data, error } = await supabase.from("attendance").insert([
       {
         email,
@@ -39,39 +35,22 @@ export async function POST(req) {
         an,
         serie,
         disciplina,
-        tip_disciplina: tipDisciplina,
-        data: dateFormatted,
-        ora: timeFormatted,
+        tipDisciplina,
+        data: now.toISOString().split("T")[0], // Formatul YYYY-MM-DD
+        ora: now.toISOString().split("T")[1].slice(0, 8), // Formatul HH:MM:SS
       },
     ]);
 
     if (error) {
-      console.error("Eroare la salvare în Supabase:", error.message);
+      console.error("Eroare la salvare în Supabase:", error);
       return new Response(
         JSON.stringify({ error: "Eroare la salvare în Supabase" }),
         { status: 500 }
       );
     }
 
-    // 🔁 Trimite datele și către Google Sheets
-    await fetch(GOOGLE_SHEETS_WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        nume,
-        grupa,
-        an,
-        serie,
-        disciplina,
-        tip_disciplina: tipDisciplina,
-        data: dateFormatted,
-        ora: timeFormatted,
-      }),
-    });
-
     return new Response(
-      JSON.stringify({ mesaj: "Prezența a fost salvată și în Google Sheets!" }),
+      JSON.stringify({ mesaj: "Prezența a fost salvată cu succes!" }),
       { status: 200 }
     );
   } catch (error) {
