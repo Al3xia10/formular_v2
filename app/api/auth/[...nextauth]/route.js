@@ -9,19 +9,22 @@ export const authOptions = {
     }),
   ],
   pages: {
-    signIn: "/auth/signin", // Pagina personalizată
+    signIn: "/auth/signin", // Pagina personalizată pentru autentificare
   },
   session: {
     strategy: "jwt",
   },
   callbacks: {
     async signIn({ profile }) {
-      const allowedDomain = process.env.AUTHORIZED_DOMAIN;
+      const allowedDomains = ["s.fpse.unibuc.ro", "utcb.ro"]; // ✅ Aici adaugi domeniile permise
 
-      if (profile?.email?.endsWith(`@${allowedDomain}`)) {
+      const email = profile?.email;
+      const domain = email?.split("@")[1];
+
+      if (allowedDomains.includes(domain)) {
         return true;
       } else {
-        console.warn("Email neautorizat:", profile?.email);
+        console.warn("Email neautorizat:", email);
         return false;
       }
     },
