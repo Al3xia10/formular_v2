@@ -12,6 +12,7 @@
     "@next-auth/supabase-adapter": "^0.2.1",
     "@supabase/supabase-js": "^2.49.4",
     "file-saver": "^2.0.5",
+    "formidable": "^3.5.4",
     "next": "15.3.1",
     "next-auth": "^4.24.11",
     "qrcode": "^1.5.4",

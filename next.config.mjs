@@ -1,4 +1,11 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.externals.push("formidable");
+    }
+    return config;
+  },
+};
 
-export default nextConfig;
+module.exports = nextConfig;
