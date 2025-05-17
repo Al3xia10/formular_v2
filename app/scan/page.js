@@ -12,6 +12,7 @@ export default function ScanPage() {
     disciplina: "",
     tipDisciplina: "",
   });
+  const [poza, setPoza] = useState(null);
   const [trimis, setTrimis] = useState(false);
   const [error, setError] = useState(null);
 
@@ -20,16 +21,34 @@ export default function ScanPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handlePoza = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPoza(file);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!poza) {
+      setError("Te rugăm să faci o poză în clasă.");
+      return;
+    }
+
+    const formDataToSend = new FormData();
+    formDataToSend.append("email", session.user.email);
+    for (let key in formData) {
+      formDataToSend.append(key, formData[key]);
+    }
+    formDataToSend.append("poza", poza);
+
     try {
       const raspuns = await fetch("/api/submit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: session.user.email, ...formData }),
+        body: formDataToSend,
       });
       const raspunsData = await raspuns.json();
-      console.log(raspunsData);
       if (raspuns.ok) {
         setTrimis(true);
         setError(null);
@@ -138,6 +157,15 @@ export default function ScanPage() {
             <option value="Seminar">Seminar</option>
             <option value="Laborator">Laborator</option>
           </select>
+
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePoza}
+            required
+            className="border px-3 py-2 rounded-md"
+          />
 
           <button className="bg-green-600 text-white px-4 py-2 rounded-md">
             Trimite prezența
