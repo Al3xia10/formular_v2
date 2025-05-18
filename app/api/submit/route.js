@@ -1,92 +1,96 @@
-import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { v4 as uuidv4 } from "uuid";
-import formidable from "formidable";
-import fs from "fs";
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // Folosește cheia service_role DOAR pe server.
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export async function POST(req) {
   try {
-    const form = formidable({ multiples: false });
+    const formData = await req.formData();
 
-    const data = await new Promise((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve({ fields, files });
+    const email = formData.get("email");
+    const nume = formData.get("nume");
+    const grupa = formData.get("grupa");
+    const an = formData.get("an");
+    const serie = formData.get("serie");
+    const disciplina = formData.get("disciplina");
+    const tipDisciplina = formData.get("tipDisciplina");
+    const poza = formData.get("poza");
+
+    // Verificare date lipsă
+    if (
+      !email ||
+      !nume ||
+      !grupa ||
+      !an ||
+      !serie ||
+      !disciplina ||
+      !tipDisciplina ||
+      !poza
+    ) {
+      return new Response(JSON.stringify({ error: "Date lipsă" }), {
+        status: 400,
       });
-    });
-
-    const { fields, files } = data;
-
-    // Preluăm imaginea
-    const pozaFile = files.poza?.[0];
-    if (!pozaFile) {
-      return NextResponse.json({ error: "Lipsă imagine" }, { status: 400 });
     }
 
-    const fileData = fs.readFileSync(pozaFile.filepath);
-    const fileExt = pozaFile.originalFilename.split(".").pop();
-    const fileName = `${uuidv4()}.${fileExt}`;
+    // 🔁 Încarcă poza în Supabase Storage
+    const fileName = `${email}_${Date.now()}.jpg`;
 
-    // Upload imagine în Supabase bucket
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("poze-prezenta")
-      .upload(fileName, fileData, {
-        contentType: pozaFile.mimetype,
+      .from("prezente") // asigură-te că ai creat un bucket numit "prezente"
+      .upload(fileName, poza, {
+        contentType: poza.type || "image/jpeg",
         upsert: false,
       });
 
     if (uploadError) {
-      console.error("Eroare upload:", uploadError);
-      return NextResponse.json(
-        { error: "Eroare la încărcarea pozei" },
+      console.error("Eroare la upload:", uploadError);
+      return new Response(
+        JSON.stringify({ error: "Eroare la încărcarea pozei" }),
         { status: 500 }
       );
     }
 
-    // Obține URL public
-    const { data: publicUrlData } = supabase.storage
-      .from("poze-prezenta")
+    // ✅ Construiește URL-ul imaginii
+    const publicURLResponse = supabase.storage
+      .from("prezente")
       .getPublicUrl(fileName);
+    const pozaURL = publicURLResponse.data.publicUrl;
 
-    const poza_url = publicUrlData.publicUrl;
+    // 🔃 Salvează toate datele, inclusiv poza
+    const now = new Date();
+    const { data, error } = await supabase.from("attendance").insert([
+      {
+        email,
+        nume,
+        grupa,
+        an,
+        serie,
+        disciplina,
+        tip_disciplina: tipDisciplina,
+        data: now.toISOString().split("T")[0],
+        ora: now.toISOString().split("T")[1].slice(0, 8),
+        poza_url: pozaURL,
+      },
+    ]);
 
-    // Salvăm toate datele în tabelul attendance
-    const { error: insertError } = await supabase.from("attendance").insert({
-      email: fields.email,
-      nume: fields.nume,
-      grupa: fields.grupa,
-      an: fields.an,
-      serie: fields.serie,
-      disciplina: fields.disciplina,
-      tip_disciplina: fields.tipDisciplina,
-      poza_url: poza_url,
-    });
-
-    if (insertError) {
-      console.error("Eroare la insert:", insertError);
-      return NextResponse.json(
-        { error: "Eroare la salvarea datelor" },
+    if (error) {
+      console.error("Eroare la salvare în Supabase:", error);
+      return new Response(
+        JSON.stringify({ error: "Eroare la salvarea datelor" }),
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true });
+    return new Response(
+      JSON.stringify({ mesaj: "Prezența a fost salvată cu succes!" }),
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Eroare server:", error);
-    return NextResponse.json(
-      { error: "Eroare internă server" },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: "Eroare server" }), {
+      status: 500,
+    });
   }
 }
