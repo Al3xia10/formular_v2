@@ -25,6 +25,7 @@ export default function ScanPage() {
     const file = e.target.files[0];
     if (file) {
       setPoza(file);
+      setError(null); // șterge eroarea dacă era că nu s-a făcut poza
     }
   };
 
@@ -158,16 +159,31 @@ export default function ScanPage() {
             <option value="Laborator">Laborator</option>
           </select>
 
+          {/* Buton personalizat pentru poza */}
+          <label
+            htmlFor="poza"
+            className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-md inline-block text-center hover:bg-blue-700"
+          >
+            Faceți o poză din sala de curs
+          </label>
           <input
             type="file"
+            id="poza"
+            name="poza"
             accept="image/*"
             capture="environment"
             onChange={handlePoza}
+            className="hidden"
             required
-            className="border px-3 py-2 rounded-md"
           />
+          {/* Afișare nume fișier dacă este selectat */}
+          {poza && (
+            <p className="mt-1 text-sm text-gray-700">
+              Fișier selectat: <strong>{poza.name}</strong>
+            </p>
+          )}
 
-          <button className="bg-green-600 text-white px-4 py-2 rounded-md">
+          <button className="bg-green-600 text-white px-4 py-2 rounded-md mt-4">
             Trimite prezența
           </button>
         </form>

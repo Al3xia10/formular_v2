@@ -38,7 +38,7 @@ export async function POST(req) {
     const fileName = `${email}_${Date.now()}.jpg`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("prezente")
+      .from("prezente") // asigură-te că ai creat un bucket numit "prezente"
       .upload(fileName, poza, {
         contentType: poza.type || "image/jpeg",
         upsert: false,
@@ -58,7 +58,7 @@ export async function POST(req) {
       .getPublicUrl(fileName);
     const pozaURL = publicURLResponse.data.publicUrl;
 
-    // 🔃 Salvează toate datele, inclusiv poza și has_photo
+    // 🔃 Salvează toate datele, inclusiv poza
     const now = new Date();
     const { data, error } = await supabase.from("attendance").insert([
       {
@@ -72,7 +72,6 @@ export async function POST(req) {
         data: now.toISOString().split("T")[0],
         ora: now.toISOString().split("T")[1].slice(0, 8),
         poza_url: pozaURL,
-        has_photo: true, // <-- adăugat aici
       },
     ]);
 
