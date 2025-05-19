@@ -206,7 +206,6 @@ export default function ScanPage() {
             className="border px-3 py-2 rounded-md"
             disabled={loading}
           />
-
           <select
             name="disciplina"
             value={formData.disciplina}
