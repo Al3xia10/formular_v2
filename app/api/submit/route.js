@@ -38,7 +38,7 @@ export async function POST(req) {
     const fileName = `${email}_${Date.now()}.jpg`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("prezente") // asigură-te că ai creat un bucket numit "prezente"
+      .from("prezente")
       .upload(fileName, poza, {
         contentType: poza.type || "image/jpeg",
         upsert: false,
@@ -58,8 +58,17 @@ export async function POST(req) {
       .getPublicUrl(fileName);
     const pozaURL = publicURLResponse.data.publicUrl;
 
-    // 🔃 Salvează toate datele, inclusiv poza
+    // 🕒 Obține data și ora locală din România
     const now = new Date();
+    const dataLocala = now.toLocaleDateString("sv-SE", {
+      timeZone: "Europe/Bucharest",
+    }); // format: YYYY-MM-DD
+    const oraLocala = now.toLocaleTimeString("it-IT", {
+      timeZone: "Europe/Bucharest",
+      hour12: false,
+    }); // format: HH:MM:SS
+
+    // 🔃 Salvează toate datele, inclusiv poza
     const { data, error } = await supabase.from("attendance").insert([
       {
         email,
@@ -69,8 +78,8 @@ export async function POST(req) {
         serie,
         disciplina,
         tip_disciplina: tipDisciplina,
-        data: now.toISOString().split("T")[0],
-        ora: now.toISOString().split("T")[1].slice(0, 8),
+        data: dataLocala,
+        ora: oraLocala,
         poza_url: pozaURL,
       },
     ]);
