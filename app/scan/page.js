@@ -170,139 +170,132 @@ export default function ScanPage() {
           onSubmit={handleSubmit}
           className="flex flex-col gap-4 w-full max-w-sm"
         >
-          {/* tot formularul tău de mai sus merge aici fără schimbări */}
+          <input
+            name="nume"
+            value={formData.nume}
+            onChange={handleChange}
+            required
+            placeholder="Nume complet"
+            className="border px-3 py-2 rounded-md"
+            disabled={loading}
+          />
+          <input
+            name="grupa"
+            value={formData.grupa}
+            onChange={handleChange}
+            required
+            placeholder="Grupă"
+            className="border px-3 py-2 rounded-md"
+            disabled={loading}
+          />
+          <input
+            name="an"
+            value={formData.an}
+            onChange={handleChange}
+            required
+            placeholder="An"
+            className="border px-3 py-2 rounded-md"
+            disabled={loading}
+          />
+          <input
+            name="serie"
+            value={formData.serie}
+            onChange={handleChange}
+            required
+            placeholder="Seria"
+            className="border px-3 py-2 rounded-md"
+            disabled={loading}
+          />
+
+          <select
+            name="disciplina"
+            value={formData.disciplina}
+            onChange={handleChange}
+            required
+            className="border px-3 py-2 rounded-md"
+            disabled={loading}
+          >
+            <option value="">Selectează disciplina</option>
+            <option value="Fiabilitate">Fiabilitate</option>
+            <option value="TMI I">TMI I</option>
+            <option value="TMI II">TMI II</option>
+            <option value="Automatizari">Automatizari</option>
+            <option value="SDAI">SDAI</option>
+            <option value="SDAE">SDAE</option>
+            <option value="SSV">SSV</option>
+            <option value="Analiza integrata a sistemelor de securitate">
+              Analiza integrata a sistemelor de securitate
+            </option>
+            <option value="CMRA">CMRA</option>
+          </select>
+
+          <select
+            name="tipDisciplina"
+            value={formData.tipDisciplina}
+            onChange={handleChange}
+            required
+            className="border px-3 py-2 rounded-md"
+            disabled={loading}
+          >
+            <option value="">Selectează tipul disciplinei</option>
+            <option value="Curs">Curs</option>
+            <option value="Seminar">Seminar</option>
+            <option value="Laborator">Laborator</option>
+          </select>
+
+          <label
+            htmlFor="poza"
+            className={`cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-md text-center hover:bg-blue-700 ${
+              loading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            {poza ? "Poză selectată ✅" : "Faceți o poză din sala de curs"}
+          </label>
+          <input
+            type="file"
+            id="poza"
+            name="poza"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePoza}
+            className="hidden"
+            disabled={loading}
+            required
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className={`bg-green-600 text-white px-4 py-2 rounded-md mt-4 flex items-center justify-center gap-2 ${
+              loading ? "opacity-60 cursor-not-allowed" : "hover:bg-green-700"
+            }`}
+          >
+            {loading && (
+              <svg
+                className="animate-spin h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+            )}
+            {loading ? "Se trimite prezența..." : "Trimite prezența"}
+          </button>
         </form>
       )}
-
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-4 w-full max-w-sm"
-      >
-        <input
-          name="nume"
-          value={formData.nume}
-          onChange={handleChange}
-          required
-          placeholder="Nume complet"
-          className="border px-3 py-2 rounded-md"
-          disabled={loading}
-        />
-        <input
-          name="grupa"
-          value={formData.grupa}
-          onChange={handleChange}
-          required
-          placeholder="Grupă"
-          className="border px-3 py-2 rounded-md"
-          disabled={loading}
-        />
-        <input
-          name="an"
-          value={formData.an}
-          onChange={handleChange}
-          required
-          placeholder="An"
-          className="border px-3 py-2 rounded-md"
-          disabled={loading}
-        />
-        <input
-          name="serie"
-          value={formData.serie}
-          onChange={handleChange}
-          required
-          placeholder="Seria"
-          className="border px-3 py-2 rounded-md"
-          disabled={loading}
-        />
-
-        <select
-          name="disciplina"
-          value={formData.disciplina}
-          onChange={handleChange}
-          required
-          className="border px-3 py-2 rounded-md"
-          disabled={loading}
-        >
-          <option value="">Selectează disciplina</option>
-          <option value="Fiabilitate">Fiabilitate</option>
-          <option value="TMI I">TMI I</option>
-          <option value="TMI II">TMI II</option>
-          <option value="Automatizari">Automatizari</option>
-          <option value="SDAI">SDAI</option>
-          <option value="SDAE">SDAE</option>
-          <option value="SSV">SSV</option>
-          <option value="Analiza integrata a sistemelor de securitate">
-            Analiza integrata a sistemelor de securitate
-          </option>
-          <option value="CMRA">CMRA</option>
-        </select>
-
-        <select
-          name="tipDisciplina"
-          value={formData.tipDisciplina}
-          onChange={handleChange}
-          required
-          className="border px-3 py-2 rounded-md"
-          disabled={loading}
-        >
-          <option value="">Selectează tipul disciplinei</option>
-          <option value="Curs">Curs</option>
-          <option value="Seminar">Seminar</option>
-          <option value="Laborator">Laborator</option>
-        </select>
-
-        <label
-          htmlFor="poza"
-          className={`cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-md text-center hover:bg-blue-700 ${
-            loading ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-        >
-          {poza ? "Poză selectată ✅" : "Faceți o poză din sala de curs"}
-        </label>
-        <input
-          type="file"
-          id="poza"
-          name="poza"
-          accept="image/*"
-          capture="environment"
-          onChange={handlePoza}
-          className="hidden"
-          disabled={loading}
-          required
-        />
-
-        <button
-          type="submit"
-          disabled={loading}
-          className={`bg-green-600 text-white px-4 py-2 rounded-md mt-4 flex items-center justify-center gap-2 ${
-            loading ? "opacity-60 cursor-not-allowed" : "hover:bg-green-700"
-          }`}
-        >
-          {loading && (
-            <svg
-              className="animate-spin h-5 w-5 text-white"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-              />
-            </svg>
-          )}
-          {loading ? "Se trimite prezența..." : "Trimite prezența"}
-        </button>
-      </form>
 
       {error && <p className="text-red-600 mt-4">{error}</p>}
     </div>
