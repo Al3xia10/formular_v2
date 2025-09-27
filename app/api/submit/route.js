@@ -76,7 +76,7 @@ export async function POST(req) {
 
     // Validare locală deterministă a codului QR pe baza datei curente
     function getDailyToken(dateString) {
-      const base = dateString + "SECRET_SALT"; // același salt ca în QR generator
+      const base = dateString + "ALEXYA2024_QRCHECK"; // salt sincronizat cu QR generator
       let hash = 0;
       for (let i = 0; i < base.length; i++) {
         hash = base.charCodeAt(i) + ((hash << 5) - hash);
