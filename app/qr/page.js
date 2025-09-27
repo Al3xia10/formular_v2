@@ -10,7 +10,7 @@ export default function QRPage() {
   // Generează token QR zilnic, determinist, local
   useEffect(() => {
     function getDailyToken(dateString) {
-      const base = dateString + "SECRET_SALT"; // folosește un salt fix pentru stabilitate
+      const base = dateString + "ALEXYA2024_QRCHECK"; // folosește un salt fix pentru stabilitate
       let hash = 0;
       for (let i = 0; i < base.length; i++) {
         hash = base.charCodeAt(i) + ((hash << 5) - hash);

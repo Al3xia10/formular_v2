@@ -90,19 +90,20 @@ export async function POST(req) {
     });
     const expectedToken = getDailyToken(today);
 
-    if (qrToken !== expectedToken) {
-      return new Response(
-        JSON.stringify({ error: "Codul QR este invalid sau expirat" }),
-        { status: 403 }
-      );
-    }
+    // if (qrToken !== expectedToken) {
+    //   return new Response(
+    //     JSON.stringify({ error: "Codul QR este invalid sau expirat" }),
+    //     { status: 403 }
+    //   );
+    // }
 
     // Extragere și verificare QR direct din imagine
     const arrayBuffer = await poza.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const scannedToken = await extractQrFromImage(buffer);
-
-    if (scannedToken !== qrToken) {
+    console.log("📸 Token extras din poză:", scannedToken);
+    console.log("🔐 Token primit din URL:", qrToken);
+    if (!scannedToken || scannedToken !== qrToken) {
       return new Response(
         JSON.stringify({
           error: "Codul QR este invalid sau nu corespunde pozei trimise",
