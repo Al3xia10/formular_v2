@@ -5,6 +5,21 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Funcție pentru extragerea codului QR din imagine
+async function extractQrFromImage(buffer) {
+  const form = new FormData();
+  form.append("file", new Blob([buffer]), "image.jpg");
+
+  const response = await fetch("https://api.qrserver.com/v1/read-qr-code/", {
+    method: "POST",
+    body: form,
+  });
+
+  const result = await response.json();
+  const qrData = result?.[0]?.symbol?.[0]?.data;
+  return qrData || null;
+}
+
 export async function POST(req) {
   try {
     const formData = await req.formData();
@@ -78,6 +93,20 @@ export async function POST(req) {
     if (qrToken !== expectedToken) {
       return new Response(
         JSON.stringify({ error: "Codul QR este invalid sau expirat" }),
+        { status: 403 }
+      );
+    }
+
+    // Extragere și verificare QR direct din imagine
+    const arrayBuffer = await poza.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const scannedToken = await extractQrFromImage(buffer);
+
+    if (scannedToken !== qrToken) {
+      return new Response(
+        JSON.stringify({
+          error: "Codul QR este invalid sau nu corespunde pozei trimise",
+        }),
         { status: 403 }
       );
     }
