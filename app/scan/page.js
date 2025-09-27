@@ -16,6 +16,7 @@ export default function ScanPage() {
   const [trimis, setTrimis] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [qrToken, setQrToken] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -107,6 +108,7 @@ export default function ScanPage() {
       formDataToSend.append(key, formData[key])
     );
     formDataToSend.append("poza", poza);
+    formDataToSend.append("qrToken", qrToken);
 
     try {
       const raspuns = await fetch("/api/submit", {
@@ -261,6 +263,16 @@ export default function ScanPage() {
             className="hidden"
             disabled={loading}
             required
+          />
+
+          <input
+            name="qrToken"
+            value={qrToken}
+            onChange={(e) => setQrToken(e.target.value)}
+            required
+            placeholder="Codul QR scanat"
+            className="border px-3 py-2 rounded-md"
+            disabled={loading}
           />
 
           <button
