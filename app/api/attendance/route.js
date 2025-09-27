@@ -1,6 +1,6 @@
 import { writeFile, readFile } from "fs/promises";
 import path from "path";
-import { generateOrUpdateExcel } from "../lib/excel";
+import { generateOrUpdateExcel } from "../../lib/excel";
 
 export async function POST(req) {
   try {
