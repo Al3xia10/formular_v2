@@ -22,7 +22,9 @@ export default function QRPage() {
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
     const dailyToken = getDailyToken(today);
     setToken(dailyToken);
-    QRCode.toDataURL(dailyToken).then(setQrUrl);
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const qrLink = `${origin}/scan?token=${encodeURIComponent(dailyToken)}`;
+    QRCode.toDataURL(qrLink).then(setQrUrl);
   }, []);
 
   return (

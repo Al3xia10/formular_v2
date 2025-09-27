@@ -1,6 +1,7 @@
 "use client";
 import { useSession, signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function ScanPage() {
   const { data: session, status } = useSession();
@@ -17,6 +18,15 @@ export default function ScanPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [qrToken, setQrToken] = useState("");
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const tokenFromQuery = searchParams.get("token");
+    if (tokenFromQuery) {
+      setQrToken(tokenFromQuery);
+    }
+  }, [searchParams]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -265,15 +275,7 @@ export default function ScanPage() {
             required
           />
 
-          <input
-            name="qrToken"
-            value={qrToken}
-            onChange={(e) => setQrToken(e.target.value)}
-            required
-            placeholder="Codul QR scanat"
-            className="border px-3 py-2 rounded-md"
-            disabled={loading}
-          />
+          <input type="hidden" name="qrToken" value={qrToken} />
 
           <button
             type="submit"
