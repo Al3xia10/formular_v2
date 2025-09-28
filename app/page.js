@@ -35,9 +35,11 @@ export default function QRPage() {
       ) : (
         <p>Se generează codul QR...</p>
       )}
-      <p className="text-xl text-gray-700">
-        Cod: <strong>{token}</strong>
-      </p>
+      {process.env.NODE_ENV === "development" && (
+        <p className="text-xl text-gray-700">
+          Cod: <strong>{token}</strong>
+        </p>
+      )}
     </div>
   );
 }
