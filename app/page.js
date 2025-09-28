@@ -3,27 +3,41 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 
-export default function HomePage() {
-  const [qrCodeUrl, setQrCodeUrl] = useState("");
+export default function QRPage() {
+  const [token, setToken] = useState("");
+  const [qrUrl, setQrUrl] = useState("");
 
+  // Generează token QR zilnic, determinist, local
   useEffect(() => {
-    const url = "https://formular-v2.vercel.app/scan"; // Adresa unde se află formularul de prezență
-    QRCode.toDataURL(url)
-      .then((generatedUrl) => setQrCodeUrl(generatedUrl))
-      .catch((err) => console.error("Eroare generare QR:", err));
+    function getDailyToken(dateString) {
+      const base = dateString + "ALEXYA2024_QRCHECK"; // folosește un salt fix pentru stabilitate
+      let hash = 0;
+      for (let i = 0; i < base.length; i++) {
+        hash = base.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const code = Math.abs(hash).toString(36).toUpperCase().slice(0, 6);
+      return code;
+    }
+
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const dailyToken = getDailyToken(today);
+    setToken(dailyToken);
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const qrLink = `${origin}/scan?token=${encodeURIComponent(dailyToken)}`;
+    QRCode.toDataURL(qrLink).then(setQrUrl);
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white text-black p-6">
-      <h1 className="text-3xl font-bold mb-4 text-center">
-        Scanează codul QR pentru a completa prezența
-      </h1>
-
-      {qrCodeUrl ? (
-        <img src={qrCodeUrl} alt="Cod QR prezență" className="w-64 h-64" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white text-black p-4">
+      <h1 className="text-2xl font-bold mb-6">Cod QR pentru ziua de azi</h1>
+      {qrUrl ? (
+        <img src={qrUrl} alt="QR" className="w-64 h-64 mb-4" />
       ) : (
         <p>Se generează codul QR...</p>
       )}
+      <p className="text-xl text-gray-700">
+        Cod: <strong>{token}</strong>
+      </p>
     </div>
   );
 }
