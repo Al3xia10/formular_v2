@@ -85,10 +85,10 @@ export async function POST(req) {
       return code;
     }
 
-    const today = new Date().toLocaleDateString("sv-SE", {
-      timeZone: "Europe/Bucharest",
-    });
-    const expectedToken = getDailyToken(today);
+    // const today = new Date().toLocaleDateString("sv-SE", {
+    //   timeZone: "Europe/Bucharest",
+    // });
+    // const expectedToken = getDailyToken(today);
 
     // if (qrToken !== expectedToken) {
     //   return new Response(
@@ -103,11 +103,17 @@ export async function POST(req) {
     const scannedToken = await extractQrFromImage(buffer);
     console.log("📸 Token extras din poză:", scannedToken);
     console.log("🔐 Token primit din URL:", qrToken);
-    if (!scannedToken || scannedToken !== qrToken) {
+    if (!scannedToken) {
       return new Response(
-        JSON.stringify({
-          error: "Codul QR este invalid sau nu corespunde pozei trimise",
-        }),
+        JSON.stringify({ error: "Codul QR nu a fost detectat în poză" }),
+        { status: 403 }
+      );
+    }
+
+    if (scannedToken !== qrToken) {
+      console.log("❌ Token diferit:", scannedToken, "vs", qrToken);
+      return new Response(
+        JSON.stringify({ error: "Codul QR nu corespunde celui scanat" }),
         { status: 403 }
       );
     }
