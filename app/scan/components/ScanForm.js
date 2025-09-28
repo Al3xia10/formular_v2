@@ -132,7 +132,7 @@ export default function ScanForm() {
     setError(null);
 
     const formDataToSend = new FormData();
-    formDataToSend.append("email", session.user.email);
+    formDataToSend.append("email", session?.user?.email || "");
     Object.keys(formData).forEach((key) =>
       formDataToSend.append(key, formData[key])
     );
@@ -171,10 +171,13 @@ export default function ScanForm() {
   };
 
   if (status === "loading") return <p className="text-center">Se încarcă...</p>;
+  if (status !== "authenticated") return null;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-white text-black">
-      <h1 className="text-2xl font-bold mb-4">Salut, {session.user.name}</h1>
+      <h1 className="text-2xl font-bold mb-4">
+        Salut{session?.user?.name ? `, ${session.user.name}` : ""}
+      </h1>
 
       {trimis ? (
         <div className="text-center text-green-600 font-semibold">
