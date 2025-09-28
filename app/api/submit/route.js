@@ -115,8 +115,19 @@ export async function POST(req) {
       );
     }
 
-    if (scannedToken?.trim() !== qrToken?.trim()) {
-      console.log("❌ Token diferit:", scannedToken, "vs", qrToken);
+    // Dacă tokenul extras este un URL, extrage doar codul qr din el
+    let extractedCode = scannedToken;
+    if (scannedToken?.startsWith("http")) {
+      try {
+        const url = new URL(scannedToken);
+        extractedCode = url.searchParams.get("token");
+      } catch (e) {
+        console.log("⚠️ Eroare la parsarea URL-ului:", e);
+      }
+    }
+
+    if (extractedCode?.trim() !== qrToken?.trim()) {
+      console.log("❌ Token diferit:", extractedCode, "vs", qrToken);
       return new Response(
         JSON.stringify({ error: "Codul QR este invalid sau expirat" }),
         { status: 403 }
