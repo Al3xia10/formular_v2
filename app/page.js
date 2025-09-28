@@ -22,7 +22,10 @@ export default function QRPage() {
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
     const dailyToken = getDailyToken(today);
     setToken(dailyToken);
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const isProd = process.env.NODE_ENV === "production";
+    const origin = isProd
+      ? "https://formular-v2.vercel.app"
+      : "http://localhost:3000";
     const qrLink = `${origin}/scan?token=${encodeURIComponent(dailyToken)}`;
     QRCode.toDataURL(qrLink).then(setQrUrl);
   }, []);
