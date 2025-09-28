@@ -28,8 +28,10 @@ export default function QRPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white text-black p-4">
-      <h1 className="text-2xl font-bold mb-6">Cod QR pentru ziua de azi</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white text-black p-6">
+      <h1 className="text-2xl font-bold mb-6">
+        Scanează codul QR pentru a completa prezența
+      </h1>
       {qrUrl ? (
         <img src={qrUrl} alt="QR" className="w-64 h-64 mb-4" />
       ) : (

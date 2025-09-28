@@ -165,12 +165,12 @@ export default function ScanForm() {
     return <p className="text-center">Trebuie să fii autentificat(ă).</p>;
 
   return (
-    <div className="max-w-xl mx-auto p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-white text-black">
       <h1 className="text-2xl font-bold mb-4">Salut, {session.user.name}</h1>
 
       {trimis ? (
         <div className="text-center text-green-600 font-semibold">
-          Prezența a fost trimisă cu succes!
+          Prezența ta a fost înregistrată! ✅
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
