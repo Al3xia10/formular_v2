@@ -85,12 +85,17 @@ export async function POST(req) {
       return code;
     }
 
-    const today = new Date().toLocaleDateString("sv-SE", {
-      timeZone: "Europe/Bucharest",
-    });
-    const expectedToken = getDailyToken(today);
+    // Verificare cod QR valid pentru astăzi sau ieri (flexibilitate 1 zi)
+    const today = new Date();
+    const dateFormat = (date) =>
+      date.toLocaleDateString("sv-SE", { timeZone: "Europe/Bucharest" });
 
-    if (qrToken !== expectedToken) {
+    const todayToken = getDailyToken(dateFormat(today));
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const yesterdayToken = getDailyToken(dateFormat(yesterday));
+
+    if (![todayToken, yesterdayToken].includes(qrToken)) {
       return new Response(
         JSON.stringify({ error: "Codul QR este invalid sau expirat" }),
         { status: 403 }
