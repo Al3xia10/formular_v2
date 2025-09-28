@@ -1,12 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 export default function ScanForm() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const tokenFromQuery = searchParams.get("token");
+    if (tokenFromQuery) {
+      setQrToken(tokenFromQuery);
+      console.log("Token din URL:", tokenFromQuery);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/api/auth/signin?callbackUrl=/scan");
+    }
+  }, [status, router]);
 
   const [formData, setFormData] = useState({
     nume: "",
@@ -21,14 +36,6 @@ export default function ScanForm() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [qrToken, setQrToken] = useState("");
-
-  useEffect(() => {
-    const tokenFromQuery = searchParams.get("token");
-    if (tokenFromQuery) {
-      setQrToken(tokenFromQuery);
-      console.log("Token din URL:", tokenFromQuery);
-    }
-  }, [searchParams]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -161,8 +168,6 @@ export default function ScanForm() {
   };
 
   if (status === "loading") return <p className="text-center">Se încarcă...</p>;
-  if (!session)
-    return <p className="text-center">Trebuie să fii autentificat(ă).</p>;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-white text-black">
