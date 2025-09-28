@@ -19,10 +19,16 @@ export default function ScanForm() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      const currentUrl = window.location.href;
-      window.location.href = `/api/auth/signin?callbackUrl=${encodeURIComponent(
-        currentUrl
-      )}`;
+      const token = searchParams.get("token");
+      if (token) {
+        const callback = `/scan?token=${encodeURIComponent(token)}`;
+        window.location.href = `/api/auth/signin?callbackUrl=${encodeURIComponent(
+          callback
+        )}`;
+      } else {
+        // fallback: du-l la scan simplu
+        window.location.href = `/api/auth/signin?callbackUrl=/scan`;
+      }
     }
   }, [status]);
 
