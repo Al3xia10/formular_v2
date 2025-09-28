@@ -85,17 +85,17 @@ export async function POST(req) {
       return code;
     }
 
-    // const today = new Date().toLocaleDateString("sv-SE", {
-    //   timeZone: "Europe/Bucharest",
-    // });
-    // const expectedToken = getDailyToken(today);
+    const today = new Date().toLocaleDateString("sv-SE", {
+      timeZone: "Europe/Bucharest",
+    });
+    const expectedToken = getDailyToken(today);
 
-    // if (qrToken !== expectedToken) {
-    //   return new Response(
-    //     JSON.stringify({ error: "Codul QR este invalid sau expirat" }),
-    //     { status: 403 }
-    //   );
-    // }
+    if (qrToken !== expectedToken) {
+      return new Response(
+        JSON.stringify({ error: "Codul QR este invalid sau expirat" }),
+        { status: 403 }
+      );
+    }
 
     // Extragere și verificare QR direct din imagine
     const arrayBuffer = await poza.arrayBuffer();
