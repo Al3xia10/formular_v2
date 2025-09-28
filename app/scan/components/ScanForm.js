@@ -19,9 +19,12 @@ export default function ScanForm() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/api/auth/signin?callbackUrl=/scan");
+      const currentUrl = window.location.href;
+      router.push(
+        `/api/auth/signin?callbackUrl=${encodeURIComponent(currentUrl)}`
+      );
     }
-  }, [status, router]);
+  }, [status]);
 
   const [formData, setFormData] = useState({
     nume: "",
