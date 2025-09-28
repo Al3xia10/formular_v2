@@ -20,9 +20,9 @@ export default function ScanForm() {
   useEffect(() => {
     if (status === "unauthenticated") {
       const currentUrl = window.location.href;
-      router.push(
-        `/api/auth/signin?callbackUrl=${encodeURIComponent(currentUrl)}`
-      );
+      window.location.href = `/api/auth/signin?callbackUrl=${encodeURIComponent(
+        currentUrl
+      )}`;
     }
   }, [status]);
 
