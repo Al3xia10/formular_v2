@@ -110,10 +110,10 @@ export async function POST(req) {
       );
     }
 
-    if (scannedToken !== qrToken) {
+    if (scannedToken?.trim() !== qrToken?.trim()) {
       console.log("❌ Token diferit:", scannedToken, "vs", qrToken);
       return new Response(
-        JSON.stringify({ error: "Codul QR nu corespunde celui scanat" }),
+        JSON.stringify({ error: "Codul QR este invalid sau expirat" }),
         { status: 403 }
       );
     }

@@ -26,8 +26,7 @@ export default function ScanForm() {
     const tokenFromQuery = searchParams.get("token");
     if (tokenFromQuery) {
       setQrToken(tokenFromQuery);
-    } else {
-      setError("Link-ul este invalid sau codul QR a expirat.");
+      console.log("Token din URL:", tokenFromQuery);
     }
   }, [searchParams]);
 
@@ -113,8 +112,9 @@ export default function ScanForm() {
     }
 
     if (!qrToken) {
-      setError("Codul QR este invalid sau expirat.");
-      setLoading(false);
+      setError(
+        "Tokenul QR lipseste din link. Te rugăm să scanezi din nou codul."
+      );
       return;
     }
 
