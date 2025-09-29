@@ -10,17 +10,26 @@ export default function ScanForm() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const tokenFromQuery = searchParams.get("token");
+    const rawToken = searchParams.get("token");
+
+    // Suport fallback pentru cazuri când tokenul e trimis ca state=token%3DXYZ
+    const stateParam = searchParams.get("state");
+    const extractedToken = stateParam?.startsWith("token=")
+      ? decodeURIComponent(stateParam.split("token=")[1])
+      : null;
+
+    const tokenFromQuery = rawToken || extractedToken;
+
     if (tokenFromQuery) {
       sessionStorage.setItem("qrToken", tokenFromQuery);
-      localStorage.setItem("qrToken", tokenFromQuery); // 🔄 nou
+      localStorage.setItem("qrToken", tokenFromQuery);
       setQrToken(tokenFromQuery);
-      console.log("Token din URL:", tokenFromQuery);
+      console.log("🔐 Token detectat din URL sau state:", tokenFromQuery);
     } else {
       const savedToken = sessionStorage.getItem("qrToken");
       if (savedToken) {
         setQrToken(savedToken);
-        console.log("Token din sesiune:", savedToken);
+        console.log("💾 Token din sessionStorage:", savedToken);
       }
     }
   }, [searchParams]);
