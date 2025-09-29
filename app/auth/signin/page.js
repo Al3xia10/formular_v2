@@ -1,10 +1,16 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 
 export default function SignInPage() {
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
   const handleLogin = () => {
-    signIn("google", { callbackUrl: "/scan" }); // sau "/form";
+    const callback = token
+      ? `/scan?token=${encodeURIComponent(token)}`
+      : "/scan";
+    signIn("google", { callbackUrl: callback });
   };
 
   return (
