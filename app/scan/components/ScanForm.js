@@ -13,6 +13,7 @@ export default function ScanForm() {
     const tokenFromQuery = searchParams.get("token");
     if (tokenFromQuery) {
       sessionStorage.setItem("qrToken", tokenFromQuery);
+      localStorage.setItem("qrToken", tokenFromQuery); // 🔄 nou
       setQrToken(tokenFromQuery);
       console.log("Token din URL:", tokenFromQuery);
     } else {
@@ -28,8 +29,10 @@ export default function ScanForm() {
     const token = searchParams.get("token");
 
     if (status === "unauthenticated") {
-      const callback = token
-        ? `/scan?token=${encodeURIComponent(token)}`
+      const savedToken =
+        searchParams.get("token") || localStorage.getItem("qrToken");
+      const callback = savedToken
+        ? `/scan?token=${encodeURIComponent(savedToken)}`
         : `/scan`;
       router.replace(
         `/api/auth/signin?callbackUrl=${encodeURIComponent(callback)}`
@@ -40,7 +43,6 @@ export default function ScanForm() {
       const hasTokenInUrl = !!searchParams.get("token");
       const savedToken = sessionStorage.getItem("qrToken");
       if (!hasTokenInUrl && savedToken) {
-        // Reconstruim URL-ul cu tokenul lipsă
         router.replace(`/scan?token=${encodeURIComponent(savedToken)}`);
       }
     }
