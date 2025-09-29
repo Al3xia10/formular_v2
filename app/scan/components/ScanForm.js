@@ -33,8 +33,7 @@ export default function ScanForm() {
           callback
         )}`;
       } else {
-        // fallback: du-l la scan simplu
-        window.location.href = `/api/auth/signin?callbackUrl=/scan`;
+        window.location.href = `/api/auth/signin?callbackUrl=%2Fscan`;
       }
     }
   }, [status]);
@@ -193,7 +192,7 @@ export default function ScanForm() {
       </h1>
       <button
         onClick={() => signOut()}
-        className="text-sm text-blue-600 underline mb-6"
+        className="text-m text-blue-600 underline mb-6"
       >
         Deloghează-te
       </button>
