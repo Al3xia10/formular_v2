@@ -2,10 +2,12 @@
 
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function SignInPage() {
+function SignInContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+
   const handleLogin = () => {
     const callback = token
       ? `/scan?token=${encodeURIComponent(token)}`
@@ -28,5 +30,13 @@ export default function SignInPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="text-center mt-10">Se încarcă...</div>}>
+      <SignInContent />
+    </Suspense>
   );
 }
