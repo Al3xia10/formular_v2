@@ -9,10 +9,13 @@ function SignInContent() {
   const token = searchParams.get("token");
 
   const handleLogin = () => {
-    const state = token ? `token=${encodeURIComponent(token)}` : "";
+    const baseUrl = "/scan";
+    const callbackUrl = token
+      ? `${baseUrl}?token=${encodeURIComponent(token)}`
+      : baseUrl;
+
     signIn("google", {
-      callbackUrl: "/scan",
-      state: state,
+      callbackUrl,
     });
   };
 
