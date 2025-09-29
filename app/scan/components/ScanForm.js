@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 
 export default function ScanForm() {
   const { data: session, status } = useSession();
@@ -12,8 +12,15 @@ export default function ScanForm() {
   useEffect(() => {
     const tokenFromQuery = searchParams.get("token");
     if (tokenFromQuery) {
+      sessionStorage.setItem("qrToken", tokenFromQuery);
       setQrToken(tokenFromQuery);
       console.log("Token din URL:", tokenFromQuery);
+    } else {
+      const savedToken = sessionStorage.getItem("qrToken");
+      if (savedToken) {
+        setQrToken(savedToken);
+        console.log("Token din sesiune:", savedToken);
+      }
     }
   }, [searchParams]);
 
@@ -184,6 +191,12 @@ export default function ScanForm() {
       <h1 className="text-2xl font-bold mb-4">
         Salut{session?.user?.name ? `, ${session.user.name}` : ""}
       </h1>
+      <button
+        onClick={() => signOut()}
+        className="text-sm text-blue-600 underline mb-6"
+      >
+        Deloghează-te
+      </button>
 
       {trimis ? (
         <div className="text-center text-green-600 font-semibold">
