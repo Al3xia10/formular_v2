@@ -25,18 +25,26 @@ export default function ScanForm() {
   }, [searchParams]);
 
   useEffect(() => {
+    const token = searchParams.get("token");
+
     if (status === "unauthenticated") {
-      const token = searchParams.get("token");
-      if (token) {
-        const callback = `/scan?token=${encodeURIComponent(token)}`;
-        window.location.href = `/api/auth/signin?callbackUrl=${encodeURIComponent(
-          callback
-        )}`;
-      } else {
-        window.location.href = `/api/auth/signin?callbackUrl=%2Fscan`;
+      const callback = token
+        ? `/scan?token=${encodeURIComponent(token)}`
+        : `/scan`;
+      router.replace(
+        `/api/auth/signin?callbackUrl=${encodeURIComponent(callback)}`
+      );
+    }
+
+    if (status === "authenticated") {
+      const hasTokenInUrl = !!searchParams.get("token");
+      const savedToken = sessionStorage.getItem("qrToken");
+      if (!hasTokenInUrl && savedToken) {
+        // Reconstruim URL-ul cu tokenul lipsă
+        router.replace(`/scan?token=${encodeURIComponent(savedToken)}`);
       }
     }
-  }, [status]);
+  }, [status, searchParams]);
 
   const [formData, setFormData] = useState({
     nume: "",
