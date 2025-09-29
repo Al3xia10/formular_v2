@@ -49,12 +49,14 @@ export default function ScanForm() {
         ? `/scan?token=${encodeURIComponent(savedToken)}`
         : `/scan`;
 
+      // ...existing code...
       if (!sessionStorage.getItem("redirectedToLogin")) {
         sessionStorage.setItem("redirectedToLogin", "true");
         router.replace(
-          `/api/auth/signin?callbackUrl=${encodeURIComponent(callback)}`
+          `/auth/signin?callbackUrl=${encodeURIComponent(callback)}`
         );
       }
+      // ...existing code...
     }
 
     if (status === "authenticated") {
