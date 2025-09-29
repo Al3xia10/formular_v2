@@ -35,25 +35,37 @@ export default function ScanForm() {
   }, [searchParams]);
 
   useEffect(() => {
-    const token = searchParams.get("token");
-
     if (status === "unauthenticated") {
       const savedToken =
         searchParams.get("token") || localStorage.getItem("qrToken");
+
+      // Salvează tokenul în session/local storage dacă nu e deja salvat
+      if (savedToken) {
+        sessionStorage.setItem("qrToken", savedToken);
+        localStorage.setItem("qrToken", savedToken);
+      }
+
       const callback = savedToken
         ? `/scan?token=${encodeURIComponent(savedToken)}`
         : `/scan`;
-      router.replace(
-        `/api/auth/signin?callbackUrl=${encodeURIComponent(callback)}`
-      );
+
+      if (!sessionStorage.getItem("redirectedToLogin")) {
+        sessionStorage.setItem("redirectedToLogin", "true");
+        router.replace(
+          `/api/auth/signin?callbackUrl=${encodeURIComponent(callback)}`
+        );
+      }
     }
 
     if (status === "authenticated") {
       const hasTokenInUrl = !!searchParams.get("token");
       const savedToken = sessionStorage.getItem("qrToken");
+
       if (!hasTokenInUrl && savedToken) {
         router.replace(`/scan?token=${encodeURIComponent(savedToken)}`);
       }
+
+      sessionStorage.removeItem("redirectedToLogin");
     }
   }, [status, searchParams]);
 
