@@ -223,12 +223,14 @@ export default function ScanForm() {
       <h1 className="text-2xl font-bold mb-4">
         Salut{session?.user?.name ? `, ${session.user.name}` : ""}
       </h1>
-      <button
-        onClick={() => signOut()}
-        className="text-m text-blue-600 underline mb-6"
-      >
-        Deloghează-te
-      </button>
+      {!trimis && (
+        <button
+          onClick={() => signOut()}
+          className="text-m text-blue-600 underline mb-6"
+        >
+          Deloghează-te
+        </button>
+      )}
 
       {trimis ? (
         <div className="text-center text-green-600 font-semibold">
