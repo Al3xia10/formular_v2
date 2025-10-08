@@ -24,7 +24,7 @@ function SignInContent() {
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md text-center">
         <h1 className="text-2xl font-bold mb-6">Autentificare necesară</h1>
         <p className="mb-4 text-gray-700">
-          Folosește emailul instituțional pentru a continua.
+          Folosește emailul tau pentru a continua.
         </p>
         <button
           onClick={handleLogin}
