@@ -16,17 +16,7 @@ const authOptions = {
   },
   callbacks: {
     async signIn({ profile }) {
-      const allowedDomains = ["s.fpse.unibuc.ro", "utcb.ro"]; // ✅ Aici adaugi domeniile permise
-
-      const email = profile?.email;
-      const domain = email?.split("@")[1];
-
-      if (allowedDomains.includes(domain)) {
-        return true;
-      } else {
-        console.warn("Email neautorizat:", email);
-        return false;
-      }
+      return true; // Permite autentificarea tuturor utilizatorilor
     },
     async jwt({ token, user }) {
       if (user) {
