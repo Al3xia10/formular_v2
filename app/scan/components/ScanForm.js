@@ -53,7 +53,7 @@ export default function ScanForm() {
       if (!sessionStorage.getItem("redirectedToLogin")) {
         sessionStorage.setItem("redirectedToLogin", "true");
         router.replace(
-          `/auth/signin?callbackUrl=${encodeURIComponent(callback)}`
+          `/auth/signin?callbackUrl=${encodeURIComponent(callback)}`,
         );
       }
       // ...existing code...
@@ -94,7 +94,7 @@ export default function ScanForm() {
     file,
     maxWidth = 800,
     maxHeight = 800,
-    quality = 0.7
+    quality = 0.7,
   ) => {
     return new Promise((resolve, reject) => {
       const image = new Image();
@@ -134,7 +134,7 @@ export default function ScanForm() {
               }
             },
             file.type,
-            quality
+            quality,
           );
         };
         image.onerror = () => reject(new Error("Image load error"));
@@ -168,7 +168,7 @@ export default function ScanForm() {
 
     if (!qrToken) {
       setError(
-        "Tokenul QR lipseste din link. Te rugăm să scanezi din nou codul."
+        "Tokenul QR lipseste din link. Te rugăm să scanezi din nou codul.",
       );
       return;
     }
@@ -179,7 +179,7 @@ export default function ScanForm() {
     const formDataToSend = new FormData();
     formDataToSend.append("email", session?.user?.email || "");
     Object.keys(formData).forEach((key) =>
-      formDataToSend.append(key, formData[key])
+      formDataToSend.append(key, formData[key]),
     );
     formDataToSend.append("poza", poza);
     formDataToSend.append("qrToken", qrToken);
@@ -205,7 +205,7 @@ export default function ScanForm() {
         setError(null);
       } else {
         throw new Error(
-          raspunsData.error || "A apărut o eroare la trimiterea prezenței"
+          raspunsData.error || "A apărut o eroare la trimiterea prezenței",
         );
       }
     } catch (err) {
@@ -284,9 +284,10 @@ export default function ScanForm() {
           >
             <option value="">Selectează disciplina</option>
             <option value="Fiabilitate">Fiabilitate</option>
-            <option value="TMI I">TMI I</option>
-            <option value="TMI II">TMI II</option>
-            <option value="Automatizari">Automatizari</option>
+            <option value="SEPC">SEPC</option>
+            <option value="TMIE">TMIE</option>
+            <option value="Automatizari I">Automatizari I</option>
+            <option value="Automatizari II">Automatizari II</option>
             <option value="SDAI">SDAI</option>
             <option value="SDAE">SDAE</option>
             <option value="SSV">SSV</option>
@@ -305,7 +306,7 @@ export default function ScanForm() {
           >
             <option value="">Selectează tipul disciplinei</option>
             <option value="Curs">Curs</option>
-            <option value="Seminar">Seminar</option>
+            <option value="Seminar">Proiect</option>
             <option value="Laborator">Laborator</option>
           </select>
 
