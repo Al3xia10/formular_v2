@@ -52,10 +52,6 @@ export default function QRGeneratorPage() {
           <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
             Cod QR pentru prezenta
           </h1>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#806d62]">
-            Afiseaza acest cod studentilor. Codul ramane valabil pana cand
-            generezi unul nou.
-          </p>
 
           <div className="mt-8 flex justify-center">
             {error ? (
@@ -79,7 +75,6 @@ export default function QRGeneratorPage() {
               </p>
             )}
           </div>
-
         </div>
       </section>
     </main>

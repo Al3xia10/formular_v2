@@ -241,12 +241,10 @@ export default function ScanForm() {
     }));
   };
 
-  const compressImage = (
-    file,
-    maxWidth = 800,
-    maxHeight = 800,
-    quality = 0.7,
-  ) => {
+  const MAX_UPLOAD_SIZE = 2 * 1024 * 1024;
+  const TARGET_UPLOAD_SIZE = Math.round(1.8 * 1024 * 1024);
+
+  const renderCompressedImage = (file, maxWidth, maxHeight, quality) => {
     return new Promise((resolve, reject) => {
       const image = new Image();
       const reader = new FileReader();
@@ -270,6 +268,11 @@ export default function ScanForm() {
           canvas.height = height;
 
           const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Canvas not supported"));
+            return;
+          }
+
           ctx.drawImage(image, 0, 0, width, height);
 
           canvas.toBlob(
@@ -296,15 +299,57 @@ export default function ScanForm() {
     });
   };
 
+  const prepareImageForUpload = async (file) => {
+    if (file.size <= TARGET_UPLOAD_SIZE) {
+      return file;
+    }
+
+    const attempts = [
+      { maxWidth: 1800, maxHeight: 1800, quality: 0.92 },
+      { maxWidth: 1600, maxHeight: 1600, quality: 0.9 },
+      { maxWidth: 1440, maxHeight: 1440, quality: 0.88 },
+      { maxWidth: 1280, maxHeight: 1280, quality: 0.86 },
+      { maxWidth: 1120, maxHeight: 1120, quality: 0.84 },
+    ];
+
+    let bestCandidate = file;
+
+    for (const attempt of attempts) {
+      const candidate = await renderCompressedImage(
+        file,
+        attempt.maxWidth,
+        attempt.maxHeight,
+        attempt.quality,
+      );
+
+      if (candidate.size < bestCandidate.size) {
+        bestCandidate = candidate;
+      }
+
+      if (candidate.size <= TARGET_UPLOAD_SIZE) {
+        return candidate;
+      }
+    }
+
+    if (bestCandidate.size <= MAX_UPLOAD_SIZE) {
+      return bestCandidate;
+    }
+
+    throw new Error(
+      "Poza este prea mare. Apropie camera de QR și încearcă o poză mai clară.",
+    );
+  };
+
   const handlePoza = async (e) => {
     const file = e.target.files[0];
     if (file) {
       try {
-        const compressed = await compressImage(file);
-        setPoza(compressed);
+        const preparedFile = await prepareImageForUpload(file);
+        setPoza(preparedFile);
         setError(null);
-      } catch {
-        setPoza(file);
+      } catch (photoError) {
+        setPoza(null);
+        setError(photoError.message || "Nu am putut pregăti poza pentru upload.");
       }
     }
   };
