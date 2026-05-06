@@ -1,8 +1,19 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+
+const EMPTY_ACADEMIC_OPTIONS = {
+  disciplines: [],
+  disciplineTypes: [],
+  studyYears: [],
+  series: [],
+  groupCodes: [],
+};
+
+const SELECT_ARROW_ICON = "/down-arrow.png";
 
 export default function ScanForm() {
   const { data: session, status } = useSession();
@@ -22,7 +33,6 @@ export default function ScanForm() {
 
     if (tokenFromQuery) {
       sessionStorage.setItem("qrToken", tokenFromQuery);
-      localStorage.setItem("qrToken", tokenFromQuery);
       setQrToken(tokenFromQuery);
       console.log("🔐 Token detectat din URL sau state:", tokenFromQuery);
     } else {
@@ -37,12 +47,11 @@ export default function ScanForm() {
   useEffect(() => {
     if (status === "unauthenticated") {
       const savedToken =
-        searchParams.get("token") || localStorage.getItem("qrToken");
+        searchParams.get("token") || sessionStorage.getItem("qrToken");
 
-      // Salvează tokenul în session/local storage dacă nu e deja salvat
+      // Salvează tokenul în session storage pentru a supraviețui redirectului de login
       if (savedToken) {
         sessionStorage.setItem("qrToken", savedToken);
-        localStorage.setItem("qrToken", savedToken);
       }
 
       const callback = savedToken
@@ -69,7 +78,7 @@ export default function ScanForm() {
 
       sessionStorage.removeItem("redirectedToLogin");
     }
-  }, [status, searchParams]);
+  }, [status, searchParams, router]);
 
   const [formData, setFormData] = useState({
     nume: "",
@@ -84,10 +93,152 @@ export default function ScanForm() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [qrToken, setQrToken] = useState("");
+  const [academicOptions, setAcademicOptions] = useState(
+    EMPTY_ACADEMIC_OPTIONS,
+  );
+  const [academicOptionsLoading, setAcademicOptionsLoading] = useState(true);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
+  const [studentOptions, setStudentOptions] = useState([]);
+  const [studentSearchLoading, setStudentSearchLoading] = useState(false);
+
+  useEffect(() => {
+    if (status !== "authenticated") {
+      return undefined;
+    }
+
+    let isCancelled = false;
+
+    async function loadAcademicOptions() {
+      setAcademicOptionsLoading(true);
+
+      try {
+        const response = await fetch("/api/academic-options", {
+          cache: "no-store",
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || "Nu am putut încărca opțiunile formularului.",
+          );
+        }
+
+        if (!isCancelled) {
+          setAcademicOptions(data);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setError(err.message);
+        }
+      } finally {
+        if (!isCancelled) {
+          setAcademicOptionsLoading(false);
+        }
+      }
+    }
+
+    loadAcademicOptions();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== "authenticated") {
+      return undefined;
+    }
+
+    const query = studentSearch.trim();
+
+    if (query.length < 2) {
+      if (!studentId) {
+        setStudentOptions([]);
+      }
+      return undefined;
+    }
+
+    let isCancelled = false;
+    const timeoutId = setTimeout(async () => {
+      setStudentSearchLoading(true);
+
+      try {
+        const response = await fetch(
+          `/api/students/search?q=${encodeURIComponent(query)}`,
+          {
+            cache: "no-store",
+          },
+        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Nu am putut căuta studenții.");
+        }
+
+        if (!isCancelled) {
+          setStudentOptions(data.students || []);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setError(err.message);
+        }
+      } finally {
+        if (!isCancelled) {
+          setStudentSearchLoading(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [status, studentId, studentSearch]);
+
+  useEffect(() => {
+    if (!poza) {
+      setPhotoPreviewUrl("");
+      return undefined;
+    }
+
+    const previewUrl = URL.createObjectURL(poza);
+    setPhotoPreviewUrl(previewUrl);
+
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [poza]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const nextValue = name === "serie" ? value.toUpperCase() : value;
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
+  };
+
+  const handleStudentSearchChange = (value) => {
+    setStudentSearch(value);
+    setStudentId("");
+    setFormData((current) => ({
+      ...current,
+      nume: value,
+      grupa: "",
+      an: "",
+      serie: "",
+    }));
+  };
+
+  const handleSelectStudent = (student) => {
+    setStudentId(student.id);
+    setStudentSearch(student.fullName);
+    setStudentOptions([]);
+    setError(null);
+    setFormData((current) => ({
+      ...current,
+      nume: student.fullName,
+      grupa: student.groupCode,
+      an: student.studyYear,
+      serie: student.series || "",
+    }));
   };
 
   const compressImage = (
@@ -166,10 +317,8 @@ export default function ScanForm() {
       return;
     }
 
-    if (!qrToken) {
-      setError(
-        "Tokenul QR lipseste din link. Te rugăm să scanezi din nou codul.",
-      );
+    if (!studentId) {
+      setError("Te rugăm să selectezi numele din lista de studenți.");
       return;
     }
 
@@ -181,8 +330,11 @@ export default function ScanForm() {
     Object.keys(formData).forEach((key) =>
       formDataToSend.append(key, formData[key]),
     );
+    formDataToSend.append("studentId", studentId);
     formDataToSend.append("poza", poza);
-    formDataToSend.append("qrToken", qrToken);
+    if (qrToken) {
+      formDataToSend.append("qrToken", qrToken);
+    }
 
     try {
       const raspuns = await fetch("/api/submit", {
@@ -193,15 +345,17 @@ export default function ScanForm() {
 
       if (raspuns.ok) {
         setTrimis(true);
-        setFormData({
-          nume: "",
-          grupa: "",
-          an: "",
-          serie: "",
+        setFormData((current) => ({
+          nume: current.nume,
+          grupa: current.grupa,
+          an: current.an,
+          serie: current.serie,
           disciplina: "",
           tipDisciplina: "",
-        });
+        }));
         setPoza(null);
+        setQrToken("");
+        sessionStorage.removeItem("qrToken");
         setError(null);
       } else {
         throw new Error(
@@ -209,6 +363,10 @@ export default function ScanForm() {
         );
       }
     } catch (err) {
+      if (err.message?.toLowerCase().includes("codul qr")) {
+        sessionStorage.removeItem("qrToken");
+        setQrToken("");
+      }
       setError(err.message);
     } finally {
       setLoading(false);
@@ -219,153 +377,332 @@ export default function ScanForm() {
   if (status !== "authenticated") return null;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-white text-black">
-      <h1 className="text-2xl font-bold mb-4">
-        Salut{session?.user?.name ? `, ${session.user.name}` : ""}
-      </h1>
-      {!trimis && (
-        <button
-          onClick={() => signOut()}
-          className="text-m text-blue-600 underline mb-6"
-        >
-          Deloghează-te
-        </button>
-      )}
+    <main className="min-h-screen bg-[#fffaf4] px-3 py-4 text-[#2f2a25] sm:px-4 sm:py-8">
+      <section className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-md items-start justify-center sm:items-center">
+        <div className="w-full overflow-hidden rounded-[1.75rem] border border-orange-100 bg-white shadow-2xl shadow-orange-100/70">
+          <div className="p-4 sm:p-6">
+            <div className="mb-3 text-center">
+              <h1 className="text-2xl font-black tracking-tight text-[#2f2a25] sm:text-3xl mt-4">
+                Salut{session?.user?.name ? `, ${session.user.name}` : ""} 👋
+              </h1>
+              <p className="mx-auto mt-1 max-w-xs text-[14px] leading-5 text-[#806d62] sm:text-sm">
+                Completează datele de mai jos și atașează poza făcută în sală.
+              </p>
 
-      {trimis ? (
-        <div className="text-center text-green-600 font-semibold">
-          Prezența ta a fost înregistrată! ✅
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            name="nume"
-            value={formData.nume}
-            onChange={handleChange}
-            required
-            placeholder="Nume complet"
-            className="border px-3 py-2 rounded-md w-full"
-            disabled={loading}
-          />
-          <input
-            name="grupa"
-            value={formData.grupa}
-            onChange={handleChange}
-            required
-            placeholder="Grupă"
-            className="border px-3 py-2 rounded-md w-full"
-            disabled={loading}
-          />
-          <input
-            name="an"
-            value={formData.an}
-            onChange={handleChange}
-            required
-            placeholder="An"
-            className="border px-3 py-2 rounded-md w-full"
-            disabled={loading}
-          />
-          <input
-            name="serie"
-            value={formData.serie}
-            onChange={handleChange}
-            required
-            placeholder="Seria"
-            className="border px-3 py-2 rounded-md w-full"
-            disabled={loading}
-          />
-          <select
-            name="disciplina"
-            value={formData.disciplina}
-            onChange={handleChange}
-            required
-            className="border px-3 py-2 rounded-md w-full"
-            disabled={loading}
-          >
-            <option value="">Selectează disciplina</option>
-            <option value="Fiabilitate">Fiabilitate</option>
-            <option value="SEPC">SEPC</option>
-            <option value="TMIE">TMIE</option>
-            <option value="Automatizari I">Automatizari I</option>
-            <option value="Automatizari II">Automatizari II</option>
-            <option value="SDAI">SDAI</option>
-            <option value="SDAE">SDAE</option>
-            <option value="SSV">SSV</option>
-            <option value="Analiza integrata a sistemelor de securitate">
-              Analiza integrata a sistemelor de securitate
-            </option>
-            <option value="CMRA">CMRA</option>
-          </select>
-          <select
-            name="tipDisciplina"
-            value={formData.tipDisciplina}
-            onChange={handleChange}
-            required
-            className="border px-3 py-2 rounded-md w-full"
-            disabled={loading}
-          >
-            <option value="">Selectează tipul disciplinei</option>
-            <option value="Curs">Curs</option>
-            <option value="Seminar">Proiect</option>
-            <option value="Laborator">Laborator</option>
-          </select>
+              {!trimis && (
+                <button
+                  type="button"
+                  onClick={() => signOut()}
+                  className="mb-4 mt-4 rounded-full bg-[#f7efe7] px-4 py-2 text-xs font-bold text-[#7b5d4b] transition hover:bg-[#f0dfcf] hover:text-[#3a2b22]"
+                >
+                  Deloghează-te
+                </button>
+              )}
+            </div>
 
-          <label
-            htmlFor="poza"
-            className={`cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-md text-center hover:bg-blue-700 ${
-              loading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-          >
-            {poza ? "Poză selectată ✅" : "Faceți o poză din sala de curs"}
-          </label>
-          <input
-            type="file"
-            id="poza"
-            name="poza"
-            accept="image/*"
-            capture="environment"
-            onChange={handlePoza}
-            className="hidden"
-            disabled={loading}
-            required
-          />
+            {trimis ? (
+              <div className="rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-8 text-center shadow-lg shadow-emerald-100/60">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-3xl text-white shadow-lg shadow-emerald-200">
+                  ✓
+                </div>
+                <h2 className="text-2xl font-black text-emerald-800">
+                  Prezența ta a fost înregistrată!
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-emerald-700">
+                  Mulțumim. Datele au fost trimise cu succes.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4 pb-2">
+                <div className="grid gap-3">
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
+                      Nume
+                    </label>
+                    <div className="relative">
+                      <input
+                        value={studentSearch}
+                        onChange={(e) =>
+                          handleStudentSearchChange(e.target.value)
+                        }
+                        required
+                        placeholder="Scrie numele și alege-l din lista afișată"
+                        className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-4 text-sm font-semibold text-[#2f2a25] outline-none transition placeholder:text-[#b8a599] focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                        disabled={loading || academicOptionsLoading}
+                      />
 
-          <input type="hidden" name="qrToken" value={qrToken} />
+                      {studentOptions.length > 0 && !studentId && (
+                        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-2xl shadow-orange-100/70">
+                          {studentOptions.map((student) => (
+                            <button
+                              key={student.id}
+                              type="button"
+                              onClick={() => handleSelectStudent(student)}
+                              className="flex w-full flex-col items-start px-4 py-3 text-left transition hover:bg-orange-50"
+                            >
+                              <span className="text-sm font-black text-[#2f2a25]">
+                                {student.fullName}
+                              </span>
+                              <span className="text-xs font-semibold text-[#806d62]">
+                                Grupa {student.groupCode} • Anul{" "}
+                                {student.studyYear} • Seria {student.series}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <input type="hidden" name="studentId" value={studentId} />
+                    <input type="hidden" name="nume" value={formData.nume} />
+                    <p className="mt-2 text-xs font-semibold text-[#806d62]">
+                      {studentId
+                        ? "Numele a fost selectat din catalogul studenților."
+                        : studentSearchLoading
+                          ? "Se caută în catalogul studenților..."
+                          : "Scrie cel puțin 2 litere și selectează numele din lista din catalog."}
+                    </p>
+                  </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className={`bg-green-600 text-white px-4 py-2 rounded-md mt-4 flex items-center justify-center gap-2 ${
-              loading ? "opacity-60 cursor-not-allowed" : "hover:bg-green-700"
-            }`}
-          >
-            {loading && (
-              <svg
-                className="animate-spin h-5 w-5 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                />
-              </svg>
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
+                      Email
+                    </label>
+                    <input
+                      value={session?.user?.email || ""}
+                      readOnly
+                      className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#f7efe7] px-4 text-sm font-semibold text-[#7b5d4b] outline-none"
+                    />
+                  </div>
+
+                  <div className="grid gap-3">
+                    <div>
+                      <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
+                        Grupă
+                      </label>
+                      <input
+                        name="grupa"
+                        value={formData.grupa}
+                        readOnly
+                        required
+                        placeholder="Se completează după selectarea studentului"
+                        className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#f7efe7] px-4 text-sm font-semibold text-[#7b5d4b] outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
+                        An
+                      </label>
+                      <input
+                        name="an"
+                        value={formData.an}
+                        readOnly
+                        required
+                        placeholder="Se completează după selectarea studentului"
+                        className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#f7efe7] px-4 text-sm font-semibold text-[#7b5d4b] outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
+                        Serie
+                      </label>
+                      {formData.serie ? (
+                        <input
+                          name="serie"
+                          value={formData.serie}
+                          readOnly
+                          required
+                          className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#f7efe7] px-4 text-sm font-semibold text-[#7b5d4b] outline-none"
+                        />
+                      ) : (
+                        <div className="relative">
+                          <select
+                            name="serie"
+                            value={formData.serie}
+                            onChange={handleChange}
+                            required
+                            className="h-12 w-full appearance-none rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-4 pr-12 text-sm font-semibold text-[#2f2a25] outline-none transition placeholder:text-[#b8a599] focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                            disabled={
+                              loading || academicOptionsLoading || !studentId
+                            }
+                          >
+                            <option value="">Selectează seria</option>
+                            {academicOptions.series.map((item) => (
+                              <option key={item} value={item}>
+                                {item}
+                              </option>
+                            ))}
+                          </select>
+                          <Image
+                            src={SELECT_ARROW_ICON}
+                            alt=""
+                            width={16}
+                            height={16}
+                            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 opacity-60"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
+                      Disciplina
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="disciplina"
+                        value={formData.disciplina}
+                        onChange={handleChange}
+                        required
+                        className="h-12 w-full appearance-none rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-4 pr-12 text-sm font-semibold text-[#2f2a25] outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                        disabled={loading || academicOptionsLoading}
+                      >
+                        <option value="">Selectează disciplina</option>
+                        {academicOptions.disciplines.map((item) => (
+                          <option key={item} value={item}>
+                            {item}
+                          </option>
+                        ))}
+                      </select>
+                      <Image
+                        src={SELECT_ARROW_ICON}
+                        alt=""
+                        width={16}
+                        height={16}
+                        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 opacity-60"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
+                      Tipul disciplinei
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="tipDisciplina"
+                        value={formData.tipDisciplina}
+                        onChange={handleChange}
+                        required
+                        className="h-12 w-full appearance-none rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-4 pr-12 text-sm font-semibold text-[#2f2a25] outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                        disabled={loading || academicOptionsLoading}
+                      >
+                        <option value="">Selectează tipul disciplinei</option>
+                        {academicOptions.disciplineTypes.map((item) => (
+                          <option key={item} value={item}>
+                            {item}
+                          </option>
+                        ))}
+                      </select>
+                      <Image
+                        src={SELECT_ARROW_ICON}
+                        alt=""
+                        width={16}
+                        height={16}
+                        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 opacity-60"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-dashed border-orange-300 bg-orange-50/70 p-3">
+                  <div className="mb-3 flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
+                      📸
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-[#4a3b33]">
+                        Poză cu QR-ul din sală
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-[#8a7062]">
+                        Imaginea trebuie să conțină codul QR afișat de profesor.
+                      </p>
+                    </div>
+                  </div>
+
+                  {photoPreviewUrl && (
+                    <div className="overflow-hidden rounded-2xl border border-orange-200 bg-white">
+                      <Image
+                        src={photoPreviewUrl}
+                        alt="Preview poză prezență"
+                        width={640}
+                        height={416}
+                        unoptimized
+                        className="h-52 w-full object-cover"
+                      />
+                    </div>
+                  )}
+
+                  <label
+                    htmlFor="poza"
+                    className={`flex h-12 cursor-pointer items-center justify-center rounded-2xl bg-[#ff8a3d] px-4 text-center text-sm font-black text-white shadow-lg shadow-orange-200 transition active:scale-95 hover:bg-[#f97316] ${
+                      loading ? "cursor-not-allowed opacity-50" : ""
+                    }`}
+                  >
+                    {poza
+                      ? "Poză selectată ✅"
+                      : "Faceți o poză din sala de curs"}
+                  </label>
+                  <input
+                    type="file"
+                    id="poza"
+                    name="poza"
+                    accept="image/jpeg,image/png"
+                    capture="environment"
+                    onChange={handlePoza}
+                    className="hidden"
+                    disabled={loading}
+                  />
+                </div>
+
+                <input type="hidden" name="qrToken" value={qrToken} />
+
+                {error && (
+                  <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-center text-sm font-bold text-red-700">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading || academicOptionsLoading}
+                  className={`flex h-13 min-h-13 w-full items-center justify-center gap-2 rounded-2xl bg-[#2f2a25] px-5 py-4 text-base font-black text-white shadow-xl shadow-stone-300/80 transition ${
+                    loading || academicOptionsLoading
+                      ? "cursor-not-allowed opacity-60"
+                      : "hover:-translate-y-0.5 hover:bg-black"
+                  }`}
+                >
+                  {loading && (
+                    <svg
+                      className="h-5 w-5 animate-spin text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      />
+                    </svg>
+                  )}
+                  {loading ? "Se trimite prezența..." : "Trimite prezența"}
+                </button>
+              </form>
             )}
-            {loading ? "Se trimite prezența..." : "Trimite prezența"}
-          </button>
-        </form>
-      )}
-      {error && <p className="text-red-600 mt-4 text-center">{error}</p>}
-    </div>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }

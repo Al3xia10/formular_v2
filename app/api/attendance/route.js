@@ -56,7 +56,7 @@ export async function POST(req) {
       JSON.stringify({ mesaj: "Prezența a fost salvată cu succes!" }),
       {
         status: 200,
-      }
+      },
     );
   } catch (error) {
     console.error("Eroare:", error);

@@ -1,68 +1,92 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
+import { createQrSessionToken } from "../../../lib/qrToken";
+import {
+  ATTENDANCE_EVENT_TYPES,
+  getRequestAuditContext,
+  logAttendanceEvent,
+} from "../../../lib/attendanceAudit";
+import { canAccessProfessorArea, getUserRoleFromSession } from "../../../lib/auth";
+import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const date = searchParams.get("date"); // format: YYYY-MM-DD
+  const session = await getServerSession(authOptions);
+  const role = getUserRoleFromSession(session);
+  const auditContext = getRequestAuditContext(req);
 
-  if (!date) {
-    return new Response(JSON.stringify({ error: "Data lipsă" }), {
-      status: 400,
-    });
+  if (!session) {
+    return new Response(
+      JSON.stringify({ error: "Trebuie sa fii autentificat." }),
+      { status: 401 },
+    );
   }
 
-  const qrFlagEmail = "__qr_token__";
-
-  // Caută token existent
-  const { data: existing } = await supabase
-    .from("attendance")
-    .select("qr_token")
-    .eq("email", qrFlagEmail)
-    .eq("data", date)
-    .maybeSingle();
-
-  if (existing?.qr_token) {
-    return new Response(JSON.stringify({ token: existing.qr_token }), {
-      status: 200,
-    });
+  if (!canAccessProfessorArea(role)) {
+    return new Response(
+      JSON.stringify({ error: "Nu ai acces la generarea codului QR." }),
+      { status: 403 },
+    );
   }
 
-  // Generează token nou
-  const newToken = Array.from({ length: 6 }, () =>
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".charAt(
-      Math.floor(Math.random() * 36)
-    )
-  ).join("");
+  const { origin } = new URL(req.url);
 
-  // Salvează în attendance cu un email special "__qr_token__"
-  const { error } = await supabase.from("attendance").insert([
-    {
-      email: qrFlagEmail,
-      nume: "qr-generator",
-      grupa: "qr",
-      an: "qr",
-      serie: "qr",
-      disciplina: "qr",
-      tip_disciplina: "qr",
-      data: date,
-      ora: "00:00:00",
-      poza_url: "",
-      qr_token: newToken,
-      valid_qr: false,
-    },
-  ]);
+  const { token, tokenHash } = createQrSessionToken();
+  const professorEmail = session.user.email;
+  const startsAtIso = new Date().toISOString();
+  const expiresAtIso = new Date(
+    Date.now() + 365 * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  await supabaseAdmin
+    .from("attendance_sessions")
+    .update({ is_active: false })
+    .eq("professor_email", professorEmail)
+    .eq("is_active", true)
+    .lt("expires_at", new Date().toISOString());
+
+  const { data: insertedSession, error } = await supabaseAdmin
+    .from("attendance_sessions")
+    .insert([
+      {
+        token_hash: tokenHash,
+        professor_email: professorEmail,
+        starts_at: startsAtIso,
+        expires_at: expiresAtIso,
+        is_active: true,
+      },
+    ])
+    .select("id")
+    .single();
 
   if (error) {
-    return new Response(JSON.stringify({ error: "Eroare la salvare QR" }), {
-      status: 500,
-    });
+    console.error("Eroare la crearea sesiunii QR:", error);
+    return new Response(
+      JSON.stringify({ error: "Nu am putut crea sesiunea QR." }),
+      { status: 500 },
+    );
   }
 
-  return new Response(JSON.stringify({ token: newToken }), {
-    status: 200,
+  await logAttendanceEvent({
+    eventType: ATTENDANCE_EVENT_TYPES.QR_SESSION_CREATED,
+    status: "info",
+    sessionId: insertedSession.id,
+    professorEmail,
+    ipAddress: auditContext.ipAddress,
+    userAgent: auditContext.userAgent,
+    details: {
+      issuedAt: startsAtIso,
+      expiresAt: expiresAtIso,
+    },
   });
+
+  const qrLink = `${origin}/scan?token=${encodeURIComponent(token)}`;
+
+  return new Response(
+    JSON.stringify({
+      token,
+      sessionId: insertedSession.id,
+      qrLink,
+    }),
+    { status: 200 },
+  );
 }

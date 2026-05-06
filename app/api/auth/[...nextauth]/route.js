@@ -1,7 +1,8 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import { getUserRole } from "../../../../lib/auth";
 
-const authOptions = {
+export const authOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -24,12 +25,14 @@ const authOptions = {
         token.email = user.email;
         token.name = user.name;
       }
+      token.role = await getUserRole(token.email || user?.email);
       return token;
     },
     async session({ session, token }) {
       session.user.id = token.id;
       session.user.email = token.email;
       session.user.name = token.name;
+      session.user.role = token.role;
       return session;
     },
   },
