@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import NextImage from "next/image";
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -246,7 +246,7 @@ export default function ScanForm() {
 
   const renderCompressedImage = (file, maxWidth, maxHeight, quality) => {
     return new Promise((resolve, reject) => {
-      const image = new Image();
+      const image = new window.Image();
       const reader = new FileReader();
 
       reader.onload = (e) => {
@@ -579,7 +579,7 @@ export default function ScanForm() {
                               </option>
                             ))}
                           </select>
-                          <Image
+                          <NextImage
                             src={SELECT_ARROW_ICON}
                             alt=""
                             width={16}
@@ -611,7 +611,7 @@ export default function ScanForm() {
                           </option>
                         ))}
                       </select>
-                      <Image
+                      <NextImage
                         src={SELECT_ARROW_ICON}
                         alt=""
                         width={16}
@@ -641,7 +641,7 @@ export default function ScanForm() {
                           </option>
                         ))}
                       </select>
-                      <Image
+                      <NextImage
                         src={SELECT_ARROW_ICON}
                         alt=""
                         width={16}
@@ -669,7 +669,7 @@ export default function ScanForm() {
 
                   {photoPreviewUrl && (
                     <div className="overflow-hidden rounded-2xl border border-orange-200 bg-white">
-                      <Image
+                      <NextImage
                         src={photoPreviewUrl}
                         alt="Preview poză prezență"
                         width={640}
