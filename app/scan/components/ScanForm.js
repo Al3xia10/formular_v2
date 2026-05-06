@@ -102,6 +102,7 @@ export default function ScanForm() {
   const [studentSearch, setStudentSearch] = useState("");
   const [studentOptions, setStudentOptions] = useState([]);
   const [studentSearchLoading, setStudentSearchLoading] = useState(false);
+  const [isSeriesLocked, setIsSeriesLocked] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated") {
@@ -218,6 +219,7 @@ export default function ScanForm() {
   const handleStudentSearchChange = (value) => {
     setStudentSearch(value);
     setStudentId("");
+    setIsSeriesLocked(false);
     setFormData((current) => ({
       ...current,
       nume: value,
@@ -232,6 +234,7 @@ export default function ScanForm() {
     setStudentSearch(student.fullName);
     setStudentOptions([]);
     setError(null);
+    setIsSeriesLocked(Boolean(student.series));
     setFormData((current) => ({
       ...current,
       nume: student.fullName,
@@ -552,7 +555,7 @@ export default function ScanForm() {
                       <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
                         Serie
                       </label>
-                      {formData.serie ? (
+                      {isSeriesLocked ? (
                         <input
                           name="serie"
                           value={formData.serie}
