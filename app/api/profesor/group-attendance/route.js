@@ -38,7 +38,7 @@ export async function GET(req) {
       );
     }
 
-    if (!canAccessProfessorArea(role)) {
+    if (!canAccessProfessorArea(role, session?.user?.email)) {
       return new Response(
         JSON.stringify({ error: "Nu ai acces la această resursă." }),
         { status: 403 },

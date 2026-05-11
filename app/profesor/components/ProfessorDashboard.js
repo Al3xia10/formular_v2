@@ -6,6 +6,7 @@ import DisciplineCatalogModal from "./dashboard/DisciplineCatalogModal";
 import DisciplineTotalsCard from "./dashboard/DisciplineTotalsCard";
 import FiltersModal from "./dashboard/FiltersModal";
 import GroupAttendancePanel from "./dashboard/GroupAttendancePanel";
+import ManualAttendanceModal from "./dashboard/ManualAttendanceModal";
 import PaginationCard from "./dashboard/PaginationCard";
 import ResultsOverview from "./dashboard/ResultsOverview";
 import SearchPanel from "./dashboard/SearchPanel";
@@ -43,6 +44,7 @@ export default function ProfessorDashboard() {
     series: [],
     groupCodes: [],
     disciplines: [],
+    disciplineTypes: [],
   });
   const [groupFilters, setGroupFilters] = useState({
     studyYear: "",
@@ -57,6 +59,9 @@ export default function ProfessorDashboard() {
   const [disciplineCatalogLoading, setDisciplineCatalogLoading] = useState(false);
   const [disciplineCatalogError, setDisciplineCatalogError] = useState("");
   const [showDisciplineCatalogModal, setShowDisciplineCatalogModal] = useState(false);
+  const [showManualAttendanceModal, setShowManualAttendanceModal] =
+    useState(false);
+  const [manualAttendanceLoading, setManualAttendanceLoading] = useState(false);
 
   useEffect(() => {
     let isCancelled = false;
@@ -78,6 +83,7 @@ export default function ProfessorDashboard() {
             series: data.series || [],
             groupCodes: data.groupCodes || [],
             disciplines: data.disciplines || [],
+            disciplineTypes: data.disciplineTypes || [],
           });
           setDisciplineOptions(data.disciplines || []);
         }
@@ -407,6 +413,37 @@ export default function ProfessorDashboard() {
     }));
   };
 
+  const fetchGroupAttendanceData = useCallback(
+    async (filters) => {
+      const params = new URLSearchParams();
+      params.set("studyYear", filters.studyYear);
+      params.set("groupCode", filters.groupCode);
+
+      if (filters.series) {
+        params.set("series", filters.series);
+      }
+
+      if (filters.disciplina) {
+        params.set("disciplina", filters.disciplina);
+      }
+
+      const response = await fetch(
+        `/api/profesor/group-attendance?${params.toString()}`,
+        {
+          cache: "no-store",
+        },
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Nu am putut încărca situația pe grupă.");
+      }
+
+      return data;
+    },
+    [],
+  );
+
   const handleChangeDraftFilter = (key, value) => {
     setDraftFilters((current) => ({
       ...current,
@@ -426,36 +463,77 @@ export default function ProfessorDashboard() {
     setGroupAttendanceError("");
 
     try {
-      const params = new URLSearchParams();
-      params.set("studyYear", groupFilters.studyYear);
-      params.set("groupCode", groupFilters.groupCode);
-
-      if (groupFilters.series) {
-        params.set("series", groupFilters.series);
-      }
-
-      if (groupFilters.disciplina) {
-        params.set("disciplina", groupFilters.disciplina);
-      }
-
-      const response = await fetch(
-        `/api/profesor/group-attendance?${params.toString()}`,
-        {
-          cache: "no-store",
-        },
-      );
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Nu am putut încărca situația pe grupă.");
-      }
-
+      const data = await fetchGroupAttendanceData(groupFilters);
       setGroupAttendanceData(data);
     } catch (err) {
       setGroupAttendanceError(err.message);
       setGroupAttendanceData(null);
     } finally {
       setGroupAttendanceLoading(false);
+    }
+  };
+
+  const handleCreateManualAttendance = async (payload) => {
+    setManualAttendanceLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/profesor/manual-attendance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Nu am putut salva prezența manuală.");
+      }
+
+      const refreshedData = await fetchDashboardData({
+        nextSearch: hasSearched ? activeSearch : "",
+        nextDisciplina: hasSearched ? activeDisciplina : "",
+        nextPage: 1,
+      });
+      setDashboardData(refreshedData);
+      setPage(refreshedData.page);
+
+      if (!hasSearched) {
+        setActiveSearch("");
+        setActiveDisciplina("");
+        setHasSearched(true);
+      }
+
+      const insertedAttendance = data.attendance;
+
+      if (
+        groupAttendanceData &&
+        insertedAttendance &&
+        groupFilters.studyYear === insertedAttendance.an &&
+        groupFilters.groupCode === insertedAttendance.grupa &&
+        (!groupFilters.series || groupFilters.series === insertedAttendance.serie) &&
+        (!groupFilters.disciplina ||
+          groupFilters.disciplina === insertedAttendance.disciplina)
+      ) {
+        const refreshedGroupData = await fetchGroupAttendanceData(groupFilters);
+        setGroupAttendanceData(refreshedGroupData);
+      }
+
+      if (
+        disciplineCatalogData?.disciplina &&
+        insertedAttendance?.disciplina === disciplineCatalogData.disciplina
+      ) {
+        const refreshedCatalogData = await fetchDisciplineCatalogData(
+          insertedAttendance.disciplina,
+        );
+        setDisciplineCatalogData(refreshedCatalogData);
+      }
+
+      setShowManualAttendanceModal(false);
+      window.alert(data.mesaj || "Prezența a fost adăugată manual.");
+    } finally {
+      setManualAttendanceLoading(false);
     }
   };
 
@@ -475,6 +553,7 @@ export default function ProfessorDashboard() {
             onDisciplinaChange={setDisciplina}
             onSubmit={handleSearch}
             onShowAllStudents={handleShowAllStudents}
+            onOpenManualAttendance={() => setShowManualAttendanceModal(true)}
           />
 
           <div className="rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-xl shadow-orange-100/70 sm:p-6">
@@ -548,6 +627,16 @@ export default function ProfessorDashboard() {
         data={disciplineCatalogData}
         onClose={handleCloseDisciplineCatalogModal}
         onExport={handleExportDisciplineCatalog}
+      />
+
+      <ManualAttendanceModal
+        show={showManualAttendanceModal}
+        loading={manualAttendanceLoading}
+        disciplineOptions={academicOptions.disciplines}
+        disciplineTypes={academicOptions.disciplineTypes || []}
+        seriesOptions={academicOptions.series}
+        onClose={() => !manualAttendanceLoading && setShowManualAttendanceModal(false)}
+        onSubmit={handleCreateManualAttendance}
       />
     </main>
   );

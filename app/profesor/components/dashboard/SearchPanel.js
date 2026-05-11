@@ -8,6 +8,7 @@ export default function SearchPanel({
   onDisciplinaChange,
   onSubmit,
   onShowAllStudents,
+  onOpenManualAttendance,
 }) {
   return (
     <form
@@ -61,6 +62,17 @@ export default function SearchPanel({
         </button>
 
         <div className="grid gap-2">
+          <button
+            type="button"
+            onClick={onOpenManualAttendance}
+            disabled={loading}
+            className={`flex h-10 w-full items-center justify-center rounded-2xl border border-orange-200 bg-[#fffaf4] px-4 text-sm font-black text-orange-600 transition hover:bg-orange-50 ${
+              loading ? "cursor-not-allowed opacity-60" : ""
+            }`}
+          >
+            Adaugă prezență manual
+          </button>
+
           <button
             type="button"
             onClick={onShowAllStudents}

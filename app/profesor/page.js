@@ -7,12 +7,13 @@ import { canAccessProfessorArea, getUserRoleFromSession } from "../../lib/auth";
 export default async function ProfesorPage() {
   const session = await getServerSession(authOptions);
   const role = getUserRoleFromSession(session);
+  const email = session?.user?.email;
 
   if (!session) {
     redirect("/auth/signin?callbackUrl=/profesor");
   }
 
-  if (!canAccessProfessorArea(role)) {
+  if (!canAccessProfessorArea(role, email)) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fffaf4] px-4 text-[#2f2a25]">
         <div className="w-full max-w-md rounded-[2rem] border border-red-100 bg-white p-6 text-center shadow-2xl shadow-red-100/70">
