@@ -361,7 +361,9 @@ export default function ManualAttendanceModal({
               ) : (
                 <select
                   value={form.serie}
-                  onChange={(event) => handleChange("serie", event.target.value)}
+                  onChange={(event) =>
+                    handleChange("serie", event.target.value)
+                  }
                   className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-4 text-sm font-semibold text-[#2f2a25] outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                 >
                   <option value="">Alege seria</option>
