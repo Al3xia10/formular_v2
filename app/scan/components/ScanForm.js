@@ -424,6 +424,16 @@ export default function ScanForm() {
     }
   };
 
+  const handleSwitchAccount = async () => {
+    const callback = qrToken
+      ? `/scan?token=${encodeURIComponent(qrToken)}`
+      : "/scan";
+
+    sessionStorage.removeItem("redirectedToLogin");
+    await signOut({ redirect: false });
+    router.replace(`/auth/signin?callbackUrl=${encodeURIComponent(callback)}`);
+  };
+
   if (status === "loading") return <p className="text-center">Se încarcă...</p>;
   if (status !== "authenticated") return null;
 
@@ -441,13 +451,22 @@ export default function ScanForm() {
               </p>
 
               {!trimis && (
-                <button
-                  type="button"
-                  onClick={() => signOut()}
-                  className="mb-4 mt-4 rounded-full bg-[#f7efe7] px-4 py-2 text-xs font-bold text-[#7b5d4b] transition hover:bg-[#f0dfcf] hover:text-[#3a2b22]"
-                >
-                  Deloghează-te
-                </button>
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSwitchAccount}
+                    className="rounded-full bg-[#ffefe3] px-4 py-2 text-xs font-bold text-[#c45d1b] transition hover:bg-[#ffe2cf] hover:text-[#9e4610]"
+                  >
+                    Schimbă contul
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => signOut()}
+                    className="rounded-full bg-[#f7efe7] px-4 py-2 text-xs font-bold text-[#7b5d4b] transition hover:bg-[#f0dfcf] hover:text-[#3a2b22]"
+                  >
+                    Deloghează-te
+                  </button>
+                </div>
               )}
             </div>
 

@@ -17,7 +17,13 @@ function SignInContent() {
         ? `${baseUrl}?token=${encodeURIComponent(token)}`
         : baseUrl;
 
-    signIn("google", { callbackUrl });
+    signIn(
+      "google",
+      { callbackUrl },
+      {
+        prompt: "select_account",
+      },
+    );
   };
 
   return (
@@ -54,7 +60,7 @@ function SignInContent() {
               style={{ backgroundColor: "#ff7a1a", color: "#ffffff" }}
               className="mt-5 flex h-12 w-full items-center justify-center rounded-[1.75rem] px-5 text-sm font-black shadow-lg shadow-orange-200 transition hover:opacity-90"
             >
-              Autentificare cu Google
+              Autentificare / Schimbă contul
             </button>
 
             <p className="mt-4 text-center text-xs font-semibold leading-5 text-[#806d62]">
