@@ -15,7 +15,11 @@ import {
   getRequestAuditContext,
   logAttendanceEvent,
 } from "../../../../lib/attendanceAudit";
-import { findStudentById } from "../../../../lib/studentsData";
+import {
+  createStudent,
+  findStudentById,
+  findStudentByIdentity,
+} from "../../../../lib/studentsData";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 
 export async function POST(req) {
@@ -41,6 +45,9 @@ export async function POST(req) {
 
     const body = await req.json();
     const studentId = String(body.studentId || "").trim();
+    const studentName = String(body.studentName || "").trim();
+    const studentStudyYear = String(body.studyYear || "").trim();
+    const studentGroupCode = String(body.groupCode || "").trim();
     const disciplina = String(body.disciplina || "").trim();
     const tipDisciplina = String(body.tipDisciplina || "").trim();
     const manualSeries = String(body.serie || "").trim().toUpperCase();
@@ -63,7 +70,7 @@ export async function POST(req) {
       return new Response(JSON.stringify({ error: errorMessage }), { status });
     }
 
-    if (!studentId || !disciplina || !tipDisciplina) {
+    if ((!studentId && !studentName) || !disciplina || !tipDisciplina) {
       return rejectRequest(
         400,
         "Studentul, disciplina și tipul disciplinei sunt obligatorii.",
@@ -79,7 +86,53 @@ export async function POST(req) {
       );
     }
 
-    const selectedStudent = await findStudentById(studentId);
+    let selectedStudent = studentId ? await findStudentById(studentId) : null;
+
+    if (!selectedStudent) {
+      if (!studentName || !studentStudyYear || !studentGroupCode || !manualSeries) {
+        return rejectRequest(
+          400,
+          "Pentru un student nou trebuie completate numele, anul, grupa și seria.",
+          ATTENDANCE_REASON_CODES.MISSING_DATA,
+        );
+      }
+
+      selectedStudent = await findStudentByIdentity({
+        fullName: studentName,
+        studyYear: studentStudyYear,
+        groupCode: studentGroupCode,
+        series: manualSeries,
+      });
+
+      if (!selectedStudent) {
+        try {
+          selectedStudent = await createStudent({
+            fullName: studentName,
+            studyYear: studentStudyYear,
+            groupCode: studentGroupCode,
+            series: manualSeries,
+          });
+        } catch (createError) {
+          if (createError.code === "23505") {
+            return rejectRequest(
+              409,
+              "Studentul există deja în catalog pentru combinația nume, an, grupă și serie.",
+              ATTENDANCE_REASON_CODES.INVALID_STUDENT,
+              {
+                details: {
+                  studentName,
+                  studyYear: studentStudyYear,
+                  groupCode: studentGroupCode,
+                  series: manualSeries,
+                },
+              },
+            );
+          }
+
+          throw createError;
+        }
+      }
+    }
 
     if (!selectedStudent) {
       return rejectRequest(
@@ -90,6 +143,7 @@ export async function POST(req) {
     }
 
     const effectiveSeries = selectedStudent.series || manualSeries;
+    const normalizedStudentEmail = selectedStudent.email?.trim().toLowerCase() || null;
 
     if (!effectiveSeries) {
       return rejectRequest(
@@ -97,7 +151,7 @@ export async function POST(req) {
         "Selectează seria studentului înainte să salvezi prezența.",
         ATTENDANCE_REASON_CODES.INVALID_SERIES,
         {
-          email: selectedStudent.email || null,
+          email: normalizedStudentEmail,
           details: { studentId: selectedStudent.id },
         },
       );
@@ -118,7 +172,7 @@ export async function POST(req) {
         "Disciplina selectată nu este validă.",
         ATTENDANCE_REASON_CODES.INVALID_DISCIPLINE,
         {
-          email: selectedStudent.email || null,
+          email: normalizedStudentEmail,
           details: { studentId: selectedStudent.id },
         },
       );
@@ -130,7 +184,7 @@ export async function POST(req) {
         "Combinația an, serie și grupă nu este validă pentru studentul selectat.",
         ATTENDANCE_REASON_CODES.INVALID_ACADEMIC_GROUP,
         {
-          email: selectedStudent.email || null,
+          email: normalizedStudentEmail,
           disciplineId: disciplineRow.id,
           details: { studentId: selectedStudent.id },
         },
@@ -174,7 +228,7 @@ export async function POST(req) {
         "Există deja o prezență salvată astăzi pentru acest student, la aceeași disciplină și același tip.",
         ATTENDANCE_REASON_CODES.DUPLICATE_MANUAL_ATTENDANCE,
         {
-          email: selectedStudent.email || null,
+          email: normalizedStudentEmail,
           disciplineId: disciplineRow.id,
           academicGroupId: academicGroupRow.id,
           details: {
@@ -189,7 +243,7 @@ export async function POST(req) {
       .from("attendance")
       .insert([
         {
-          email: selectedStudent.email?.trim().toLowerCase() || null,
+          email: normalizedStudentEmail,
           nume: selectedStudent.fullName,
           student_id: selectedStudent.id,
           grupa: selectedStudent.groupCode,
@@ -223,7 +277,7 @@ export async function POST(req) {
       eventType: ATTENDANCE_EVENT_TYPES.MANUAL_ATTENDANCE_CREATED,
       status: "success",
       attendanceId: insertedAttendance.id,
-      email: selectedStudent.email?.trim().toLowerCase() || null,
+      email: normalizedStudentEmail,
       professorEmail,
       disciplineId: disciplineRow.id,
       academicGroupId: academicGroupRow.id,

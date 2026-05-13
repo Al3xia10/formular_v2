@@ -1,7 +1,7 @@
 "use client";
 
 import NextImage from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 
@@ -19,6 +19,8 @@ export default function ScanForm() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const videoRef = useRef(null);
+  const activeStreamRef = useRef(null);
 
   useEffect(() => {
     const rawToken = searchParams.get("token");
@@ -103,6 +105,8 @@ export default function ScanForm() {
   const [studentOptions, setStudentOptions] = useState([]);
   const [studentSearchLoading, setStudentSearchLoading] = useState(false);
   const [isSeriesLocked, setIsSeriesLocked] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isStartingCamera, setIsStartingCamera] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated") {
@@ -210,6 +214,15 @@ export default function ScanForm() {
     return () => URL.revokeObjectURL(previewUrl);
   }, [poza]);
 
+  useEffect(() => {
+    return () => {
+      if (activeStreamRef.current) {
+        activeStreamRef.current.getTracks().forEach((track) => track.stop());
+        activeStreamRef.current = null;
+      }
+    };
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     const nextValue = name === "serie" ? value.toUpperCase() : value;
@@ -246,6 +259,64 @@ export default function ScanForm() {
 
   const MAX_UPLOAD_SIZE = 2 * 1024 * 1024;
   const TARGET_UPLOAD_SIZE = Math.round(1.8 * 1024 * 1024);
+
+  const stopCameraStream = () => {
+    if (activeStreamRef.current) {
+      activeStreamRef.current.getTracks().forEach((track) => track.stop());
+      activeStreamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  const startCamera = async () => {
+    setError(null);
+    setIsStartingCamera(true);
+
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error(
+          "Camera nu este disponibilă în acest browser. Deschide formularul din Chrome sau Safari pe telefon.",
+        );
+      }
+
+      stopCameraStream();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      });
+
+      activeStreamRef.current = stream;
+      setIsCameraOpen(true);
+    } catch (cameraError) {
+      setError(
+        cameraError?.message ||
+          "Nu am putut porni camera. Verifică permisiunea pentru cameră și încearcă din nou.",
+      );
+      stopCameraStream();
+      setIsCameraOpen(false);
+    } finally {
+      setIsStartingCamera(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isCameraOpen || !videoRef.current || !activeStreamRef.current) {
+      return;
+    }
+
+    videoRef.current.srcObject = activeStreamRef.current;
+    videoRef.current
+      .play()
+      .catch(() => setError("Nu am putut porni previzualizarea camerei."));
+  }, [isCameraOpen]);
 
   const renderCompressedImage = (file, maxWidth, maxHeight, quality) => {
     return new Promise((resolve, reject) => {
@@ -339,22 +410,64 @@ export default function ScanForm() {
     }
 
     throw new Error(
-      "Poza este prea mare. Apropie camera de QR și încearcă o poză mai clară.",
+      "Poza este prea mare. Încearcă din nou cu lumină mai bună sau puțin mai departe, fără zoom digital.",
     );
   };
 
-  const handlePoza = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const preparedFile = await prepareImageForUpload(file);
-        setPoza(preparedFile);
-        setError(null);
-      } catch (photoError) {
-        setPoza(null);
-        setError(photoError.message || "Nu am putut pregăti poza pentru upload.");
-      }
+  const capturePhoto = async () => {
+    const video = videoRef.current;
+
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      setError("Camera nu este pregătită încă. Așteaptă o clipă și încearcă din nou.");
+      return;
     }
+
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      const context = canvas.getContext("2d");
+      if (!context) {
+        throw new Error("Nu am putut captura cadrul camerei.");
+      }
+
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (nextBlob) => {
+            if (nextBlob) {
+              resolve(nextBlob);
+              return;
+            }
+
+            reject(new Error("Nu am putut genera poza din cameră."));
+          },
+          "image/jpeg",
+          0.96,
+        );
+      });
+
+      const capturedFile = new File([blob], `camera-${Date.now()}.jpg`, {
+        type: "image/jpeg",
+        lastModified: Date.now(),
+      });
+
+      const preparedFile = await prepareImageForUpload(capturedFile);
+      setPoza(preparedFile);
+      setError(null);
+      setIsCameraOpen(false);
+      stopCameraStream();
+    } catch (photoError) {
+      setPoza(null);
+      setError(photoError.message || "Nu am putut pregăti poza pentru upload.");
+    }
+  };
+
+  const closeCamera = () => {
+    setIsCameraOpen(false);
+    stopCameraStream();
   };
 
   const handleSubmit = async (e) => {
@@ -662,10 +775,10 @@ export default function ScanForm() {
                     </div>
                     <div>
                       <p className="text-sm font-black text-[#4a3b33]">
-                        Poză cu QR-ul din sală
+                        Poză făcută în sala de curs
                       </p>
                       <p className="mt-1 text-xs leading-5 text-[#8a7062]">
-                        Imaginea trebuie să conțină codul QR afișat de profesor.
+                        După scanare, fă poza direct din cameră. Imaginea trebuie să conțină QR-ul afișat acum de profesor, altfel prezența va fi respinsă.
                       </p>
                     </div>
                   </div>
@@ -683,26 +796,53 @@ export default function ScanForm() {
                     </div>
                   )}
 
-                  <label
-                    htmlFor="poza"
+                  {isCameraOpen && (
+                    <div className="mb-3 overflow-hidden rounded-2xl border border-orange-200 bg-[#2f2a25]">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="h-64 w-full object-cover"
+                      />
+                      <div className="flex gap-2 border-t border-white/10 p-3">
+                        <button
+                          type="button"
+                          onClick={capturePhoto}
+                          className="flex-1 rounded-2xl bg-[#ff8a3d] px-4 py-3 text-sm font-black text-white transition hover:bg-[#f97316]"
+                        >
+                          Capturează poza
+                        </button>
+                        <button
+                          type="button"
+                          onClick={closeCamera}
+                          className="rounded-2xl border border-white/20 px-4 py-3 text-sm font-bold text-white/90 transition hover:bg-white/10"
+                        >
+                          Închide
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={startCamera}
+                    disabled={loading || isStartingCamera}
                     className={`flex h-12 cursor-pointer items-center justify-center rounded-2xl bg-[#ff8a3d] px-4 text-center text-sm font-black text-white shadow-lg shadow-orange-200 transition active:scale-95 hover:bg-[#f97316] ${
-                      loading ? "cursor-not-allowed opacity-50" : ""
+                      loading || isStartingCamera
+                        ? "cursor-not-allowed opacity-50"
+                        : ""
                     }`}
                   >
-                    {poza
-                      ? "Poză selectată ✅"
-                      : "Faceți o poză din sala de curs"}
-                  </label>
-                  <input
-                    type="file"
-                    id="poza"
-                    name="poza"
-                    accept="image/jpeg,image/png"
-                    capture="environment"
-                    onChange={handlePoza}
-                    className="hidden"
-                    disabled={loading}
-                  />
+                    {isStartingCamera
+                      ? "Se pornește camera..."
+                      : poza
+                        ? "Refă poza din cameră"
+                        : "Deschide camera"}
+                  </button>
+                  <p className="mt-2 text-xs leading-5 text-[#8a7062]">
+                    Formularul acceptă doar poze capturate în acest ecran, nu upload din galerie.
+                  </p>
                 </div>
 
                 <input type="hidden" name="qrToken" value={qrToken} />

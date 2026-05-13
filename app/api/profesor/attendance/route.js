@@ -414,8 +414,20 @@ function buildDisciplineTotals(attendance) {
     }
 
     accumulator[key].attendanceCount += 1;
-    if (item.email) {
-      accumulator[key].students.add(item.email);
+    const studentIdentity =
+      item.student_id ||
+      [
+        String(item.nume || "").trim().toLowerCase(),
+        String(item.an || "").trim(),
+        String(item.grupa || "").trim(),
+        String(item.serie || "").trim().toUpperCase(),
+      ]
+        .filter(Boolean)
+        .join("::") ||
+      String(item.email || "").trim().toLowerCase();
+
+    if (studentIdentity) {
+      accumulator[key].students.add(studentIdentity);
     }
 
     return accumulator;

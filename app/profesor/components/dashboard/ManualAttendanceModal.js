@@ -4,8 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 
 const EMPTY_FORM = {
   search: "",
+  studentName: "",
   disciplina: "",
   tipDisciplina: "",
+  studyYear: "",
+  groupCode: "",
   serie: "",
 };
 
@@ -26,6 +29,11 @@ function SelectedStudentSummary({ student }) {
         Grupa {student.groupCode} • Anul {student.studyYear}
         {student.series ? ` • Seria ${student.series}` : ""}
       </p>
+      {!student.email && (
+        <p className="mt-2 text-xs font-bold text-[#a95d31]">
+          Emailul va fi completat automat la primul login al studentului.
+        </p>
+      )}
     </div>
   );
 }
@@ -35,6 +43,8 @@ export default function ManualAttendanceModal({
   loading,
   disciplineOptions,
   disciplineTypes,
+  studyYearOptions,
+  groupCodeOptions,
   seriesOptions,
   onClose,
   onSubmit,
@@ -45,12 +55,23 @@ export default function ManualAttendanceModal({
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchTouched, setSearchTouched] = useState(false);
+  const [createMode, setCreateMode] = useState(false);
 
   const effectiveSeries = selectedStudent?.series || form.serie;
+  const effectiveStudyYear = selectedStudent?.studyYear || form.studyYear;
+  const effectiveGroupCode = selectedStudent?.groupCode || form.groupCode;
   const isSeriesLocked = Boolean(selectedStudent?.series);
   const filteredSeriesOptions = useMemo(
     () => [...new Set(seriesOptions.filter(Boolean))],
     [seriesOptions],
+  );
+  const filteredStudyYearOptions = useMemo(
+    () => [...new Set(studyYearOptions.filter(Boolean))],
+    [studyYearOptions],
+  );
+  const filteredGroupCodeOptions = useMemo(
+    () => [...new Set(groupCodeOptions.filter(Boolean))],
+    [groupCodeOptions],
   );
 
   useEffect(() => {
@@ -61,6 +82,7 @@ export default function ManualAttendanceModal({
       setSearchLoading(false);
       setError("");
       setSearchTouched(false);
+      setCreateMode(false);
       return;
     }
 
@@ -72,6 +94,23 @@ export default function ManualAttendanceModal({
 
   useEffect(() => {
     if (!show) {
+      return undefined;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousDocumentOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousDocumentOverflow;
+    };
+  }, [show]);
+
+  useEffect(() => {
+    if (!show || createMode) {
       return undefined;
     }
 
@@ -119,7 +158,7 @@ export default function ManualAttendanceModal({
       isCancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [form.search, show]);
+  }, [createMode, form.search, show]);
 
   if (!show) {
     return null;
@@ -132,9 +171,13 @@ export default function ManualAttendanceModal({
       setSearchTouched(true);
       setSelectedStudent(null);
       setSuggestions([]);
+      setCreateMode(false);
       setForm((current) => ({
         ...current,
         search: value,
+        studentName: value,
+        studyYear: "",
+        groupCode: "",
         serie: "",
       }));
       return;
@@ -150,10 +193,41 @@ export default function ManualAttendanceModal({
     setSelectedStudent(student);
     setSuggestions([]);
     setSearchTouched(false);
+    setCreateMode(false);
     setForm((current) => ({
       ...current,
       search: student.fullName,
+      studentName: student.fullName,
+      studyYear: student.studyYear,
+      groupCode: student.groupCode,
       serie: student.series || current.serie || "",
+    }));
+  };
+
+  const handleEnableCreateMode = () => {
+    setSelectedStudent(null);
+    setSuggestions([]);
+    setSearchTouched(false);
+    setCreateMode(true);
+    setError("");
+    setForm((current) => ({
+      ...current,
+      studentName: current.studentName || current.search.trim(),
+    }));
+  };
+
+  const handleSwitchToCatalogMode = () => {
+    setCreateMode(false);
+    setError("");
+    setSuggestions([]);
+    setSearchTouched(false);
+    setSelectedStudent(null);
+    setForm((current) => ({
+      ...current,
+      search: current.studentName || current.search,
+      studyYear: "",
+      groupCode: "",
+      serie: "",
     }));
   };
 
@@ -161,8 +235,10 @@ export default function ManualAttendanceModal({
     event.preventDefault();
     setError("");
 
-    if (!selectedStudent) {
-      setError("Selectează studentul din lista afișată.");
+    if (!selectedStudent && !createMode) {
+      setError(
+        "Selectează studentul din lista afișată sau folosește opțiunea de student nou.",
+      );
       return;
     }
 
@@ -176,6 +252,21 @@ export default function ManualAttendanceModal({
       return;
     }
 
+    if (createMode && !form.studentName.trim()) {
+      setError("Completează numele studentului nou.");
+      return;
+    }
+
+    if (!effectiveStudyYear) {
+      setError("Selectează anul studentului.");
+      return;
+    }
+
+    if (!effectiveGroupCode) {
+      setError("Selectează grupa studentului.");
+      return;
+    }
+
     if (!effectiveSeries) {
       setError("Selectează seria studentului.");
       return;
@@ -183,9 +274,14 @@ export default function ManualAttendanceModal({
 
     try {
       await onSubmit({
-        studentId: selectedStudent.id,
+        studentId: selectedStudent?.id || "",
+        studentName: createMode
+          ? form.studentName.trim()
+          : selectedStudent.fullName,
         disciplina: form.disciplina,
         tipDisciplina: form.tipDisciplina,
+        studyYear: effectiveStudyYear,
+        groupCode: effectiveGroupCode,
         serie: effectiveSeries,
       });
       setForm(EMPTY_FORM);
@@ -193,6 +289,7 @@ export default function ManualAttendanceModal({
       setSuggestions([]);
       setSearchTouched(false);
       setError("");
+      setCreateMode(false);
     } catch (err) {
       setError(err.message);
     }
@@ -217,7 +314,7 @@ export default function ManualAttendanceModal({
             </h2>
             <p className="mt-2 text-sm leading-6 text-[#806d62]">
               Folosește această opțiune dacă un student nu reușește să trimită
-              prezența din formular. Studentul trebuie selectat din catalog.
+              prezența din formular.
             </p>
           </div>
 
@@ -232,56 +329,124 @@ export default function ManualAttendanceModal({
           </button>
         </div>
 
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={handleSwitchToCatalogMode}
+            className={`rounded-2xl border px-4 py-3 text-left transition ${
+              !createMode
+                ? "border-[#2f2a25] bg-gradient-to-br from-orange-500 to-rose-400 text-white"
+                : "border-[#ead8c8] bg-[#fffaf4] text-[#4a3b33] hover:bg-white"
+            }`}
+          >
+            <p className="text-sm font-black">Student din catalog</p>
+            <p
+              className={`mt-1 text-xs font-semibold ${
+                !createMode ? "text-white/75" : "text-[#806d62]"
+              }`}
+            >
+              Caută studentul existent.
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={handleEnableCreateMode}
+            className={`rounded-2xl border px-4 py-3 text-left transition ${
+              createMode
+                ? "border-[#2f2a25] bg-gradient-to-br from-orange-500 to-rose-400 text-white"
+                : "border-[#ead8c8] bg-[#fffaf4] text-[#4a3b33] hover:bg-white"
+            }`}
+          >
+            <p className="text-sm font-black">Student nou</p>
+            <p
+              className={`mt-1 text-xs font-semibold ${
+                !createMode ? "text-[#806d62]" : "text-white/75"
+              }`}
+            >
+              Adaugă student direct în catalog.
+            </p>
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div className="relative">
-            <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
-              Nume student
-            </label>
-            <input
-              value={form.search}
-              onChange={(event) => handleChange("search", event.target.value)}
-              placeholder="Scrie cel puțin 2 litere și alege studentul din listă"
-              className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-4 text-sm font-semibold text-[#2f2a25] outline-none transition placeholder:text-[#b8a599] focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
-            />
+          {!createMode ? (
+            <>
+              <div className="relative">
+                <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
+                  Nume student
+                </label>
+                <input
+                  value={form.search}
+                  onChange={(event) =>
+                    handleChange("search", event.target.value)
+                  }
+                  placeholder="Scrie cel puțin 2 litere și alege studentul din listă"
+                  className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-4 text-sm font-semibold text-[#2f2a25] outline-none transition placeholder:text-[#b8a599] focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                />
 
-            {searchTouched && suggestions.length > 0 && (
-              <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-orange-100 bg-white p-2 shadow-xl shadow-orange-100/70">
-                {suggestions.map((student) => (
-                  <button
-                    key={student.id}
-                    type="button"
-                    onClick={() => handleSelectStudent(student)}
-                    className="block w-full rounded-xl px-3 py-3 text-left transition hover:bg-[#fffaf4]"
-                  >
-                    <p className="text-sm font-black text-[#2f2a25]">
-                      {student.fullName}
-                    </p>
-                    <p className="mt-1 text-xs font-semibold text-[#806d62]">
-                      Grupa {student.groupCode} • Anul {student.studyYear}
-                      {student.series ? ` • Seria ${student.series}` : ""}
-                    </p>
-                  </button>
-                ))}
+                {searchTouched && suggestions.length > 0 && (
+                  <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-orange-100 bg-white p-2 shadow-xl shadow-orange-100/70">
+                    {suggestions.map((student) => (
+                      <button
+                        key={student.id}
+                        type="button"
+                        onClick={() => handleSelectStudent(student)}
+                        className="block w-full rounded-xl px-3 py-3 text-left transition hover:bg-[#fffaf4]"
+                      >
+                        <p className="text-sm font-black text-[#2f2a25]">
+                          {student.fullName}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-[#806d62]">
+                          Grupa {student.groupCode} • Anul {student.studyYear}
+                          {student.series ? ` • Seria ${student.series}` : ""}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {searchTouched &&
+                  form.search.trim().length >= 2 &&
+                  !searchLoading &&
+                  suggestions.length === 0 && (
+                    <div className="mt-2 rounded-2xl border border-orange-100 bg-[#fffaf4] p-3">
+                      <p className="text-xs font-semibold text-[#806d62]">
+                        Nu am găsit studentul în catalog pentru textul introdus.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleEnableCreateMode}
+                        className="mt-2 text-xs font-black text-orange-600 transition hover:text-orange-700"
+                      >
+                        Adaugă student nou în catalog
+                      </button>
+                    </div>
+                  )}
+
+                {searchLoading && (
+                  <p className="mt-2 text-xs font-semibold text-[#806d62]">
+                    Se caută studentul în catalog...
+                  </p>
+                )}
               </div>
-            )}
 
-            {searchTouched &&
-              form.search.trim().length >= 2 &&
-              !searchLoading &&
-              suggestions.length === 0 && (
-                <p className="mt-2 text-xs font-semibold text-[#806d62]">
-                  Nu am găsit studentul în catalog pentru textul introdus.
-                </p>
-              )}
-
-            {searchLoading && (
-              <p className="mt-2 text-xs font-semibold text-[#806d62]">
-                Se caută studentul în catalog...
-              </p>
-            )}
-          </div>
-
-          <SelectedStudentSummary student={selectedStudent} />
+              <SelectedStudentSummary student={selectedStudent} />
+            </>
+          ) : (
+            <div>
+              <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
+                Nume student nou
+              </label>
+              <input
+                value={form.studentName}
+                onChange={(event) =>
+                  handleChange("studentName", event.target.value)
+                }
+                placeholder="Ex: Popescu Andrei"
+                className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-4 text-sm font-semibold text-[#2f2a25] outline-none transition placeholder:text-[#b8a599] focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+              />
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -330,29 +495,63 @@ export default function ManualAttendanceModal({
               <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
                 An
               </label>
-              <input
-                value={selectedStudent?.studyYear || ""}
-                readOnly
-                className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#f7efe6] px-4 text-sm font-semibold text-[#806d62] outline-none"
-              />
+              {selectedStudent && !createMode ? (
+                <input
+                  value={selectedStudent.studyYear || ""}
+                  readOnly
+                  className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#f7efe6] px-4 text-sm font-semibold text-[#806d62] outline-none"
+                />
+              ) : (
+                <select
+                  value={form.studyYear}
+                  onChange={(event) =>
+                    handleChange("studyYear", event.target.value)
+                  }
+                  className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-4 text-sm font-semibold text-[#2f2a25] outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                >
+                  <option value="">Alege anul</option>
+                  {filteredStudyYearOptions.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
                 Grupa
               </label>
-              <input
-                value={selectedStudent?.groupCode || ""}
-                readOnly
-                className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#f7efe6] px-4 text-sm font-semibold text-[#806d62] outline-none"
-              />
+              {selectedStudent && !createMode ? (
+                <input
+                  value={selectedStudent.groupCode || ""}
+                  readOnly
+                  className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#f7efe6] px-4 text-sm font-semibold text-[#806d62] outline-none"
+                />
+              ) : (
+                <select
+                  value={form.groupCode}
+                  onChange={(event) =>
+                    handleChange("groupCode", event.target.value)
+                  }
+                  className="h-12 w-full rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-4 text-sm font-semibold text-[#2f2a25] outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                >
+                  <option value="">Alege grupa</option>
+                  {filteredGroupCodeOptions.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-bold text-[#4a3b33]">
                 Seria
               </label>
-              {isSeriesLocked ? (
+              {isSeriesLocked && !createMode ? (
                 <input
                   value={effectiveSeries}
                   readOnly

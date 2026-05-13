@@ -147,20 +147,6 @@ export async function GET(req) {
     const studentsByLooseKey = new Map();
 
     for (const student of studentsData) {
-      const groupKey = `${student.study_year}::${student.series || ""}::${student.group_code}`;
-      const groupLabel = `Anul ${student.study_year} - Grupa ${student.group_code}${student.series ? ` - Seria ${student.series}` : ""}`;
-
-      if (!groupsMap.has(groupKey)) {
-        groupsMap.set(groupKey, {
-          key: groupKey,
-          label: groupLabel,
-          studyYear: student.study_year,
-          series: student.series || "",
-          groupCode: student.group_code,
-          students: new Map(),
-        });
-      }
-
       const emptyCounts = disciplineTypes.reduce((accumulator, type) => {
         accumulator[type] = 0;
         return accumulator;
@@ -177,7 +163,6 @@ export async function GET(req) {
         status: "Absent",
       };
 
-      groupsMap.get(groupKey).students.set(`student:${student.id}`, row);
       studentsById.set(student.id, row);
 
       const exactKey = buildCatalogMatchKey({
@@ -250,8 +235,12 @@ export async function GET(req) {
           totalAttendance: 0,
           status: "Absent",
         };
-        groupsMap.get(groupKey).students.set(studentKey, student);
       }
+
+      groupsMap.get(groupKey).students.set(
+        item.student_id ? `student:${item.student_id}` : `fallback:${exactKey}`,
+        student,
+      );
 
       if (!(typeKey in student.typeCounts)) {
         student.typeCounts[typeKey] = 0;
@@ -264,6 +253,7 @@ export async function GET(req) {
     const groups = [...groupsMap.values()]
       .map((group) => {
         const students = [...group.students.values()]
+          .filter((student) => student.totalAttendance > 0)
           .sort((left, right) =>
             left.fullName.localeCompare(right.fullName, "ro", {
               sensitivity: "base",
@@ -283,10 +273,11 @@ export async function GET(req) {
           students,
           summary: {
             totalStudents: students.length,
-            absentCount: students.filter((student) => student.totalAttendance === 0).length,
+            absentCount: 0,
           },
         };
       })
+      .filter((group) => group.students.length > 0)
       .sort((left, right) => {
         const yearDiff = Number(left.studyYear) - Number(right.studyYear);
         if (yearDiff !== 0) {

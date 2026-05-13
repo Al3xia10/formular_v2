@@ -12,7 +12,10 @@ import {
   getRequestAuditContext,
   logAttendanceEvent,
 } from "../../../lib/attendanceAudit";
-import { findStudentById } from "../../../lib/studentsData";
+import {
+  assignStudentEmailIfMissing,
+  findStudentById,
+} from "../../../lib/studentsData";
 import { extractQrFromImageBuffer } from "../../../lib/qrDecoder";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
@@ -170,6 +173,43 @@ export async function POST(req) {
       );
     }
 
+    const normalizedStudentEmail =
+      selectedStudent.email?.trim().toLowerCase() || null;
+
+    if (normalizedStudentEmail && normalizedStudentEmail !== normalizedEmail) {
+      return rejectRequest(
+        403,
+        "Contul autentificat nu corespunde studentului selectat din catalog.",
+        ATTENDANCE_REASON_CODES.INVALID_STUDENT,
+        {
+          details: {
+            studentId: selectedStudent.id,
+          },
+        },
+      );
+    }
+
+    if (!normalizedStudentEmail) {
+      try {
+        await assignStudentEmailIfMissing(selectedStudent.id, normalizedEmail);
+      } catch (studentEmailError) {
+        if (studentEmailError.code === "23505") {
+          return rejectRequest(
+            409,
+            "Emailul contului este deja asociat altui student din catalog. Contactează profesorul pentru corectarea datelor.",
+            ATTENDANCE_REASON_CODES.INVALID_STUDENT,
+            {
+              details: {
+                studentId: selectedStudent.id,
+              },
+            },
+          );
+        }
+
+        throw studentEmailError;
+      }
+    }
+
     const effectiveSeries = selectedStudent.series || serieCurata;
 
     const [disciplineRow, academicGroupRow] = await Promise.all([
@@ -203,9 +243,9 @@ export async function POST(req) {
       );
     }
 
-    // Extragere și verificare QR direct din imagine
     const arrayBuffer = await poza.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    const qrTokenValue = String(qrToken || "").trim();
     let scannedToken = null;
 
     try {
@@ -229,7 +269,7 @@ export async function POST(req) {
     if (!scannedToken) {
       return rejectRequest(
         403,
-        "Codul QR nu a fost detectat în poză",
+        "Poza nu conține suficient de clar codul QR curent. Prinde în cadru și QR-ul de pe videoproiector, apoi încearcă din nou.",
         ATTENDANCE_REASON_CODES.QR_NOT_DETECTED,
         {
           disciplineId: disciplineRow.id,
@@ -241,9 +281,9 @@ export async function POST(req) {
       );
     }
 
-    // Dacă tokenul extras este un URL, extrage doar codul qr din el
+    // Dacă tokenul extras este un URL, extrage doar codul qr din el.
     let extractedCode = scannedToken;
-    if (scannedToken?.startsWith("http")) {
+    if (scannedToken.startsWith("http")) {
       try {
         const url = new URL(scannedToken);
         extractedCode = url.searchParams.get("token");
@@ -252,10 +292,9 @@ export async function POST(req) {
       }
     }
 
-    const qrTokenValue = String(qrToken || "").trim();
     const scannedQrTokenValue = String(extractedCode || "").trim();
 
-    if (!qrTokenValue && !scannedQrTokenValue) {
+    if (!qrTokenValue || !scannedQrTokenValue) {
       return rejectRequest(
         403,
         "Codul QR este invalid. Te rugăm să rescanezi codul.",
@@ -270,10 +309,10 @@ export async function POST(req) {
       );
     }
 
-    if (qrTokenValue && scannedQrTokenValue && scannedQrTokenValue !== qrTokenValue) {
+    if (scannedQrTokenValue !== qrTokenValue) {
       return rejectRequest(
         403,
-        "Codul QR este invalid.",
+        "Poza nu conține codul QR activ pentru această oră. Rescanează codul afișat acum și fă o poză nouă.",
         ATTENDANCE_REASON_CODES.QR_MISMATCH,
         {
           disciplineId: disciplineRow.id,

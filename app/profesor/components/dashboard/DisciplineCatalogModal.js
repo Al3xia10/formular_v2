@@ -57,9 +57,8 @@ export default function DisciplineCatalogModal({
             {data?.disciplina || "Catalog disciplină"}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[#806d62]">
-            Catalogul pornește din lista studenților și arată pentru fiecare
-            grupă câte prezențe are fiecare student la toate sesiunile acestei
-            discipline, cumulat până acum.
+            Lista afișează doar studenții care au cel puțin o prezență la
+            disciplina selectată, grupați după an, grupă și serie.
           </p>
         </div>
 
@@ -103,8 +102,7 @@ export default function DisciplineCatalogModal({
                       {group.label}
                     </h3>
                     <p className="mt-1 text-xs font-semibold text-[#806d62]">
-                      {group.summary.totalStudents} studenți •{" "}
-                      {group.summary.absentCount} absenți
+                      {group.summary.totalStudents} studenți prezenți
                     </p>
                   </div>
                 </div>

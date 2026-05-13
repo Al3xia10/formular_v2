@@ -634,6 +634,8 @@ export default function ProfessorDashboard() {
         loading={manualAttendanceLoading}
         disciplineOptions={academicOptions.disciplines}
         disciplineTypes={academicOptions.disciplineTypes || []}
+        studyYearOptions={academicOptions.studyYears || []}
+        groupCodeOptions={academicOptions.groupCodes || []}
         seriesOptions={academicOptions.series}
         onClose={() => !manualAttendanceLoading && setShowManualAttendanceModal(false)}
         onSubmit={handleCreateManualAttendance}

@@ -54,7 +54,7 @@ export default function SearchPanel({
         <button
           type="submit"
           disabled={loading}
-          className={`flex h-12 w-full items-center justify-center rounded-2xl bg-[#2f2a25] px-5 text-sm font-black text-white shadow-lg shadow-stone-300/70 transition ${
+          className={`mb-2 flex h-10 w-full items-center justify-center rounded-2xl bg-[#2f2a25] px-5 text-sm font-black text-white shadow-lg shadow-stone-300/70 transition ${
             loading ? "cursor-not-allowed opacity-60" : "hover:bg-black"
           }`}
         >
@@ -67,7 +67,7 @@ export default function SearchPanel({
             onClick={onOpenManualAttendance}
             disabled={loading}
             className={`flex h-10 w-full items-center justify-center rounded-2xl border border-orange-200 bg-[#fffaf4] px-4 text-sm font-black text-orange-600 transition hover:bg-orange-50 ${
-              loading ? "cursor-not-allowed opacity-60" : ""
+              loading ? "cursor-not-allowed opacity-60" : "hover:bg-black"
             }`}
           >
             Adaugă prezență manual
@@ -78,7 +78,7 @@ export default function SearchPanel({
             onClick={onShowAllStudents}
             disabled={loading}
             style={{ backgroundColor: "#ff7a1a", color: "#ffffff" }}
-            className={`mb-2 flex h-10 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-[#ff7a1a] to-[#ff4f6d] px-4 text-sm font-black text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 hover:shadow-xl ${
+            className={`mb-2 flex h-10 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-[#ff7a1a] to-[#ff4f6d] px-4 text-sm font-black text-white shadow-lg shadow-orange-200 ${
               loading ? "cursor-not-allowed opacity-60" : ""
             }`}
           >
