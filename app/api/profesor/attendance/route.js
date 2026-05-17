@@ -14,7 +14,7 @@ import {
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 
 const ATTENDANCE_COLUMNS =
-  "id, email, nume, grupa, an, serie, disciplina, tip_disciplina, data, ora, poza_url, qr_token, valid_qr, session_id, discipline_id, academic_group_id, submitted_at";
+  "id, student_id, email, nume, grupa, an, serie, disciplina, tip_disciplina, data, ora, poza_url, qr_token, valid_qr, session_id, discipline_id, academic_group_id, submitted_at, grade";
 
 const ACTIVE_SESSION_COLUMNS =
   "id, professor_email, starts_at, expires_at, is_active, created_at";
@@ -266,7 +266,10 @@ function normalizeAttendance(
 
     return {
       ...item,
+      student_id: canonicalStudent?.id || item.student_id || null,
       nume: canonicalStudent?.fullName || item.nume,
+      observation: canonicalStudent?.observation || "",
+      observations: canonicalStudent?.observations || [],
       disciplina: normalizedDisciplina,
       an: normalizedAn,
       serie: normalizedSerie,
@@ -344,7 +347,7 @@ function filterAttendance(attendance, filters) {
 }
 
 function buildStudentKey(item) {
-  return item.email || item.nume || "student-necunoscut";
+  return item.student_id || item.email || item.nume || "student-necunoscut";
 }
 
 function groupAttendanceByStudent(attendance) {
@@ -353,8 +356,11 @@ function groupAttendanceByStudent(attendance) {
 
     if (!groups[key]) {
       groups[key] = {
+        id: item.student_id || key,
         email: item.email,
         nume: item.nume || "Student fara nume",
+        observation: item.observation || "",
+        observations: item.observations || [],
         grupa: item.grupa,
         an: item.an,
         serie: item.serie,
@@ -466,7 +472,10 @@ function buildActiveSessionPayload(activeSession, attendance) {
     studentCount: groupedStudents.length,
     students: groupedStudents.map((student) => ({
       email: student.email,
+      id: student.id,
       nume: student.nume,
+      observation: student.observation || "",
+      observations: student.observations || [],
       grupa: student.grupa,
       an: student.an,
       serie: student.serie,

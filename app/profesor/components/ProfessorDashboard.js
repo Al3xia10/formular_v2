@@ -55,6 +55,9 @@ export default function ProfessorDashboard() {
   const [groupAttendanceData, setGroupAttendanceData] = useState(null);
   const [groupAttendanceLoading, setGroupAttendanceLoading] = useState(false);
   const [groupAttendanceError, setGroupAttendanceError] = useState("");
+  const [observationSavingStudentId, setObservationSavingStudentId] =
+    useState("");
+  const [attendanceGradeSavingId, setAttendanceGradeSavingId] = useState("");
   const [disciplineCatalogData, setDisciplineCatalogData] = useState(null);
   const [disciplineCatalogLoading, setDisciplineCatalogLoading] = useState(false);
   const [disciplineCatalogError, setDisciplineCatalogError] = useState("");
@@ -417,7 +420,10 @@ export default function ProfessorDashboard() {
     async (filters) => {
       const params = new URLSearchParams();
       params.set("studyYear", filters.studyYear);
-      params.set("groupCode", filters.groupCode);
+
+      if (filters.groupCode) {
+        params.set("groupCode", filters.groupCode);
+      }
 
       if (filters.series) {
         params.set("series", filters.series);
@@ -454,8 +460,8 @@ export default function ProfessorDashboard() {
   const handleLoadGroupAttendance = async (e) => {
     e.preventDefault();
 
-    if (!groupFilters.studyYear || !groupFilters.groupCode) {
-      setGroupAttendanceError("Selectează anul și grupa.");
+    if (!groupFilters.studyYear) {
+      setGroupAttendanceError("Selectează anul.");
       return;
     }
 
@@ -511,7 +517,8 @@ export default function ProfessorDashboard() {
         groupAttendanceData &&
         insertedAttendance &&
         groupFilters.studyYear === insertedAttendance.an &&
-        groupFilters.groupCode === insertedAttendance.grupa &&
+        (!groupFilters.groupCode ||
+          groupFilters.groupCode === insertedAttendance.grupa) &&
         (!groupFilters.series || groupFilters.series === insertedAttendance.serie) &&
         (!groupFilters.disciplina ||
           groupFilters.disciplina === insertedAttendance.disciplina)
@@ -534,6 +541,234 @@ export default function ProfessorDashboard() {
       window.alert(data.mesaj || "Prezența a fost adăugată manual.");
     } finally {
       setManualAttendanceLoading(false);
+    }
+  };
+
+  const handleSaveStudentObservation = async (studentId, observation) => {
+    setObservationSavingStudentId(studentId);
+    setGroupAttendanceError("");
+
+    try {
+      const response = await fetch("/api/profesor/student-observation", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ studentId, observation }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Nu am putut salva observația.");
+      }
+
+      setGroupAttendanceData((current) => {
+        if (!current) {
+          return current;
+        }
+
+        return {
+          ...current,
+          rows: current.rows.map((student) =>
+            student.id === studentId
+              ? { ...student, observation: data.student.observation || "" }
+              : student,
+          ),
+        };
+      });
+
+      setDashboardData((current) => ({
+        ...current,
+        students: (current.students || []).map((student) =>
+          student.id === studentId
+            ? {
+                ...student,
+                observation: data.student.observation || "",
+                observations: data.student.observations || [],
+              }
+              : student,
+        ),
+      }));
+
+      setDisciplineCatalogData((current) => {
+        if (!current) {
+          return current;
+        }
+
+        return {
+          ...current,
+          groups: current.groups.map((group) => ({
+            ...group,
+            students: group.students.map((student) =>
+              student.id === studentId
+                ? {
+                    ...student,
+                    observation: data.student.observation || "",
+                    observations: data.student.observations || [],
+                  }
+                : student,
+            ),
+          })),
+        };
+      });
+    } catch (err) {
+      setGroupAttendanceError(err.message);
+    } finally {
+      setObservationSavingStudentId("");
+    }
+  };
+
+  const handleCreateStudentObservation = async (studentId, content) => {
+    setObservationSavingStudentId(studentId);
+    setError("");
+
+    try {
+      const response = await fetch("/api/profesor/student-observation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ studentId, content }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Nu am putut salva observația.");
+      }
+
+      setDashboardData((current) => ({
+        ...current,
+        students: (current.students || []).map((student) =>
+          student.id === studentId
+            ? {
+                ...student,
+                observation: data.student.observation || "",
+                observations: data.student.observations || [],
+              }
+            : student,
+        ),
+      }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setObservationSavingStudentId("");
+    }
+  };
+
+  const handleUpdateStudentObservation = async (studentId, noteId, content) => {
+    setObservationSavingStudentId(studentId);
+    setError("");
+
+    try {
+      const response = await fetch("/api/profesor/student-observation", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ studentId, noteId, content }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Nu am putut actualiza observația.");
+      }
+
+      setDashboardData((current) => ({
+        ...current,
+        students: (current.students || []).map((student) =>
+          student.id === studentId
+            ? {
+                ...student,
+                observation: data.student.observation || "",
+                observations: data.student.observations || [],
+              }
+            : student,
+        ),
+      }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setObservationSavingStudentId("");
+    }
+  };
+
+  const handleDeleteStudentObservation = async (studentId, noteId) => {
+    setObservationSavingStudentId(studentId);
+    setError("");
+
+    try {
+      const response = await fetch("/api/profesor/student-observation", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ studentId, noteId }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Nu am putut șterge observația.");
+      }
+
+      setDashboardData((current) => ({
+        ...current,
+        students: (current.students || []).map((student) =>
+          student.id === studentId
+            ? {
+                ...student,
+                observation: data.student.observation || "",
+                observations: data.student.observations || [],
+              }
+            : student,
+        ),
+      }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setObservationSavingStudentId("");
+    }
+  };
+
+  const handleSaveAttendanceGrade = async (attendanceId, grade) => {
+    setAttendanceGradeSavingId(attendanceId);
+    setError("");
+
+    try {
+      const response = await fetch("/api/profesor/attendance-grade", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ attendanceId, grade }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Nu am putut salva nota.");
+      }
+
+      const nextGrade = data.attendance?.grade ?? null;
+
+      setDashboardData((current) => ({
+        ...current,
+        students: (current.students || []).map((student) => ({
+          ...student,
+          attendance: (student.attendance || []).map((attendanceItem) =>
+            attendanceItem.id === attendanceId
+              ? { ...attendanceItem, grade: nextGrade }
+              : attendanceItem,
+          ),
+        })),
+        exportAttendance: (current.exportAttendance || []).map((attendanceItem) =>
+          attendanceItem.id === attendanceId
+            ? { ...attendanceItem, grade: nextGrade }
+            : attendanceItem,
+        ),
+      }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setAttendanceGradeSavingId("");
     }
   };
 
@@ -592,6 +827,12 @@ export default function ProfessorDashboard() {
               totalStudents={dashboardData.totalStudents}
               students={dashboardData.students}
               expandedStudent={expandedStudent}
+              observationSavingStudentId={observationSavingStudentId}
+              attendanceGradeSavingId={attendanceGradeSavingId}
+              onCreateObservation={handleCreateStudentObservation}
+              onUpdateObservation={handleUpdateStudentObservation}
+              onDeleteObservation={handleDeleteStudentObservation}
+              onSaveAttendanceGrade={handleSaveAttendanceGrade}
               onToggleStudent={handleToggleStudent}
             />
           </div>
@@ -625,8 +866,10 @@ export default function ProfessorDashboard() {
         loading={disciplineCatalogLoading}
         error={disciplineCatalogError}
         data={disciplineCatalogData}
+        observationSavingStudentId={observationSavingStudentId}
         onClose={handleCloseDisciplineCatalogModal}
         onExport={handleExportDisciplineCatalog}
+        onSaveObservation={handleSaveStudentObservation}
       />
 
       <ManualAttendanceModal

@@ -52,7 +52,10 @@ export async function POST(req) {
         details: extras.details || {},
       });
 
-      return new Response(JSON.stringify({ error: errorMessage }), { status });
+      return new Response(
+        JSON.stringify({ error: errorMessage, reasonCode }),
+        { status },
+      );
     }
 
     async function errorResponse(status, errorMessage, reasonCode, extras = {}) {
@@ -70,7 +73,10 @@ export async function POST(req) {
         details: extras.details || {},
       });
 
-      return new Response(JSON.stringify({ error: errorMessage }), { status });
+      return new Response(
+        JSON.stringify({ error: errorMessage, reasonCode }),
+        { status },
+      );
     }
 
     await logAttendanceEvent({
@@ -294,7 +300,7 @@ export async function POST(req) {
 
     const scannedQrTokenValue = String(extractedCode || "").trim();
 
-    if (!qrTokenValue || !scannedQrTokenValue) {
+    if (!scannedQrTokenValue) {
       return rejectRequest(
         403,
         "Codul QR este invalid. Te rugăm să rescanezi codul.",
@@ -309,7 +315,7 @@ export async function POST(req) {
       );
     }
 
-    if (scannedQrTokenValue !== qrTokenValue) {
+    if (qrTokenValue && scannedQrTokenValue !== qrTokenValue) {
       return rejectRequest(
         403,
         "Poza nu conține codul QR activ pentru această oră. Rescanează codul afișat acum și fă o poză nouă.",
@@ -324,7 +330,7 @@ export async function POST(req) {
       );
     }
 
-    const finalQrTokenValue = qrTokenValue || scannedQrTokenValue;
+    const finalQrTokenValue = scannedQrTokenValue || qrTokenValue;
     const tokenHash = hashQrSessionToken(finalQrTokenValue);
     const { data: attendanceSession, error: attendanceSessionError } =
       await supabaseAdmin
@@ -550,8 +556,14 @@ export async function POST(req) {
         message: error?.message || "unknown_error",
       },
     });
-    return new Response(JSON.stringify({ error: "Eroare server" }), {
-      status: 500,
-    });
+    return new Response(
+      JSON.stringify({
+        error: "Eroare server",
+        reasonCode: ATTENDANCE_REASON_CODES.SERVER_ERROR,
+      }),
+      {
+        status: 500,
+      },
+    );
   }
 }

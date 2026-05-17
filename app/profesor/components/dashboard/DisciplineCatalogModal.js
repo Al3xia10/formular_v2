@@ -1,11 +1,32 @@
+import { useEffect, useState } from "react";
+
 export default function DisciplineCatalogModal({
   show,
   loading,
   error,
   data,
+  observationSavingStudentId,
   onClose,
   onExport,
+  onSaveObservation,
 }) {
+  const [observationDrafts, setObservationDrafts] = useState({});
+
+  useEffect(() => {
+    if (!data?.groups?.length) {
+      setObservationDrafts({});
+      return;
+    }
+
+    const nextDrafts = {};
+    data.groups.forEach((group) => {
+      group.students.forEach((student) => {
+        nextDrafts[student.id] = student.observation || "";
+      });
+    });
+    setObservationDrafts(nextDrafts);
+  }, [data]);
+
   if (!show) {
     return null;
   }
@@ -114,6 +135,9 @@ export default function DisciplineCatalogModal({
                         <th className="px-4 py-3 text-left font-black text-[#4a3b33]">
                           Student
                         </th>
+                        <th className="px-4 py-3 text-left font-black text-[#4a3b33]">
+                          Observații
+                        </th>
                         {data.disciplineTypes.map((type) => (
                           <th
                             key={type}
@@ -144,6 +168,41 @@ export default function DisciplineCatalogModal({
                               Grupa {student.groupCode} • Anul {student.studyYear}
                               {student.series ? ` • Seria ${student.series}` : ""}
                             </p>
+                          </td>
+                          <td className="min-w-[260px] px-4 py-3">
+                            <div className="grid gap-2">
+                              <textarea
+                                value={observationDrafts[student.id] ?? ""}
+                                onChange={(e) =>
+                                  setObservationDrafts((current) => ({
+                                    ...current,
+                                    [student.id]: e.target.value,
+                                  }))
+                                }
+                                rows={3}
+                                placeholder="Adaugă o observație"
+                                className="w-full rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-3 py-2 text-sm font-semibold text-[#2f2a25] outline-none transition placeholder:text-[#b8a599] focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onSaveObservation(
+                                    student.id,
+                                    observationDrafts[student.id] ?? "",
+                                  )
+                                }
+                                disabled={observationSavingStudentId === student.id}
+                                className={`inline-flex h-10 items-center justify-center rounded-xl px-4 text-xs font-black text-white transition ${
+                                  observationSavingStudentId === student.id
+                                    ? "cursor-not-allowed bg-[#7f746d] opacity-60"
+                                    : "bg-[#2f2a25] hover:bg-black"
+                                }`}
+                              >
+                                {observationSavingStudentId === student.id
+                                  ? "Se salvează..."
+                                  : "Salvează observația"}
+                              </button>
+                            </div>
                           </td>
                           {data.disciplineTypes.map((type) => (
                             <td

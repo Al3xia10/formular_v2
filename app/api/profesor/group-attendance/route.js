@@ -9,6 +9,7 @@ import {
   buildExactStudentKey,
   buildLooseStudentKey,
 } from "../../../../lib/studentAttendanceMatching";
+import { parseStudentObservations } from "../../../../lib/studentObservations";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 
 function getStudentStatus(typeCounts) {
@@ -19,11 +20,19 @@ function getStudentStatus(typeCounts) {
     return "Absent";
   }
 
-  if (values.every((value) => value > 0)) {
-    return "Prezent";
+  return "Prezent";
+}
+
+function getAttendanceMomentValue(item) {
+  if (item?.submitted_at) {
+    const submittedAt = new Date(item.submitted_at).getTime();
+    if (Number.isFinite(submittedAt)) {
+      return submittedAt;
+    }
   }
 
-  return "Prezent parțial";
+  const fallback = new Date(`${item?.data || ""}T${item?.ora || "00:00:00"}`).getTime();
+  return Number.isFinite(fallback) ? fallback : 0;
 }
 
 export async function GET(req) {
@@ -51,9 +60,9 @@ export async function GET(req) {
     const series = searchParams.get("series")?.trim().toUpperCase() || "";
     const disciplina = searchParams.get("disciplina")?.trim() || "";
 
-    if (!studyYear || !groupCode) {
+    if (!studyYear) {
       return new Response(
-        JSON.stringify({ error: "Anul și grupa sunt obligatorii." }),
+        JSON.stringify({ error: "Anul este obligatoriu." }),
         { status: 400 },
       );
     }
@@ -62,13 +71,18 @@ export async function GET(req) {
       ? await findDisciplineByName(disciplina)
       : null;
 
-    const { data: studentsData, error: studentsError } = await supabaseAdmin
+    let studentsQuery = supabaseAdmin
       .from("students")
-      .select("id, full_name, study_year, series, group_code")
+      .select("id, full_name, observation, study_year, series, group_code")
       .eq("is_active", true)
       .eq("study_year", studyYear)
-      .eq("group_code", groupCode)
       .order("full_name", { ascending: true });
+
+    if (groupCode) {
+      studentsQuery = studentsQuery.eq("group_code", groupCode);
+    }
+
+    const { data: studentsData, error: studentsError } = await studentsQuery;
 
     if (studentsError) {
       throw studentsError;
@@ -82,17 +96,20 @@ export async function GET(req) {
       return student.series === series || !student.series;
     });
 
-    const attendanceQuery = supabaseAdmin
+    let attendanceQuery = supabaseAdmin
       .from("attendance")
       .select(
-        "id, student_id, nume, an, grupa, serie, disciplina, tip_disciplina, discipline_id",
+        "id, student_id, nume, an, grupa, serie, disciplina, tip_disciplina, discipline_id, data, ora, submitted_at, grade",
       )
       .eq("valid_qr", true)
-      .eq("an", studyYear)
-      .eq("grupa", groupCode);
+      .eq("an", studyYear);
+
+    if (groupCode) {
+      attendanceQuery = attendanceQuery.eq("grupa", groupCode);
+    }
 
     if (series) {
-      attendanceQuery.eq("serie", series);
+      attendanceQuery = attendanceQuery.eq("serie", series);
     }
 
     const { data: attendanceData, error: attendanceError } = await attendanceQuery;
@@ -116,6 +133,12 @@ export async function GET(req) {
     const attendanceByStudentId = new Map();
     const attendanceByExactNameKey = new Map();
     const attendanceByLooseNameKey = new Map();
+
+    function pushAttendanceItem(map, key, item) {
+      const current = map.get(key) || [];
+      current.push(item);
+      map.set(key, current);
+    }
 
     for (const item of filteredAttendance) {
       const typeKey = DISCIPLINE_TYPE_OPTIONS.includes(item.tip_disciplina)
@@ -147,6 +170,36 @@ export async function GET(req) {
       attendanceByLooseNameKey.set(looseKey, looseCurrent);
     }
 
+    const attendanceItemsByStudentId = new Map();
+    const attendanceItemsByExactNameKey = new Map();
+    const attendanceItemsByLooseNameKey = new Map();
+
+    for (const item of filteredAttendance) {
+      if (item.student_id) {
+        pushAttendanceItem(attendanceItemsByStudentId, item.student_id, item);
+      }
+
+      pushAttendanceItem(
+        attendanceItemsByExactNameKey,
+        buildExactStudentKey({
+          fullName: item.nume,
+          studyYear: item.an,
+          groupCode: item.grupa,
+        }),
+        item,
+      );
+
+      pushAttendanceItem(
+        attendanceItemsByLooseNameKey,
+        buildLooseStudentKey({
+          fullName: item.nume,
+          studyYear: item.an,
+          groupCode: item.grupa,
+        }),
+        item,
+      );
+    }
+
     const rows = students.map((student) => {
       const baseTypeCounts = DISCIPLINE_TYPE_OPTIONS.reduce((accumulator, type) => {
         accumulator[type] = 0;
@@ -167,6 +220,23 @@ export async function GET(req) {
           groupCode: student.group_code,
         }),
       ) || {};
+      const attendanceItems =
+        attendanceItemsByStudentId.get(student.id) ||
+        attendanceItemsByExactNameKey.get(
+          buildExactStudentKey({
+            fullName: student.full_name,
+            studyYear: student.study_year,
+            groupCode: student.group_code,
+          }),
+        ) ||
+        attendanceItemsByLooseNameKey.get(
+          buildLooseStudentKey({
+            fullName: student.full_name,
+            studyYear: student.study_year,
+            groupCode: student.group_code,
+          }),
+        ) ||
+        [];
 
       const typeCounts = { ...baseTypeCounts };
       for (const type of Object.keys(typeCounts)) {
@@ -181,15 +251,34 @@ export async function GET(req) {
         (sum, value) => sum + value,
         0,
       );
+      const latestAttendance = [...attendanceItems].sort(
+        (a, b) => getAttendanceMomentValue(b) - getAttendanceMomentValue(a),
+      )[0];
+      const observations = parseStudentObservations(student.observation || "");
+      const grades = attendanceItems
+        .filter((item) => item.grade !== null && item.grade !== undefined)
+        .sort((a, b) => getAttendanceMomentValue(b) - getAttendanceMomentValue(a))
+        .map((item) => ({
+          id: item.id,
+          grade: item.grade,
+          type: item.tip_disciplina || "Prezență",
+          date: item.data || "",
+          time: item.ora || "",
+        }));
 
       return {
         id: student.id,
         fullName: student.full_name,
+        observation: observations[0]?.content || "",
+        observations,
         studyYear: student.study_year,
         series: student.series || series || "",
         groupCode: student.group_code,
         typeCounts,
         totalAttendance,
+        grades,
+        latestAttendanceDate: latestAttendance?.data || "",
+        latestAttendanceTime: latestAttendance?.ora || "",
         status: getStudentStatus(typeCounts),
       };
     });

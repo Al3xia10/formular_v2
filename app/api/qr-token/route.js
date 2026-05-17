@@ -6,7 +6,10 @@ import {
   getRequestAuditContext,
   logAttendanceEvent,
 } from "../../../lib/attendanceAudit";
-import { canAccessProfessorArea, getUserRoleFromSession } from "../../../lib/auth";
+import {
+  canAccessProfessorArea,
+  getUserRoleFromSession,
+} from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 export async function GET(req) {

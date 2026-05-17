@@ -47,7 +47,7 @@ export default function GroupAttendancePanel({
           onChange={(e) => onChangeFilter("groupCode", e.target.value)}
           className="h-12 rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-4 text-sm font-semibold text-[#2f2a25] outline-none focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
         >
-          <option value="">Selectează grupa</option>
+          <option value="">Toate grupele</option>
           {academicOptions.groupCodes.map((item) => (
             <option key={item} value={item}>
               Grupa {item}
@@ -136,6 +136,15 @@ export default function GroupAttendancePanel({
                   <th className="px-4 py-3 text-left font-black text-[#4a3b33]">
                     Student
                   </th>
+                  <th className="px-4 py-3 text-left font-black text-[#4a3b33]">
+                    Observații
+                  </th>
+                  <th className="px-4 py-3 text-left font-black text-[#4a3b33]">
+                    Ultima scanare
+                  </th>
+                  <th className="px-4 py-3 text-left font-black text-[#4a3b33]">
+                    Note
+                  </th>
                   {groupAttendanceData.disciplineTypes.map((type) => (
                     <th
                       key={type}
@@ -166,6 +175,65 @@ export default function GroupAttendancePanel({
                         Grupa {student.groupCode} • Anul {student.studyYear}
                         {student.series ? ` • Seria ${student.series}` : ""}
                       </p>
+                    </td>
+                    <td className="min-w-[260px] px-4 py-3">
+                      {student.observations?.length ? (
+                        <div className="grid gap-2">
+                          {student.observations.map((item) => (
+                            <div
+                              key={item.id}
+                              className="rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-3 py-2 text-sm font-semibold leading-6 text-[#2f2a25]"
+                            >
+                              {item.content}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm font-semibold text-[#b8a599]">
+                          Fără observații
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {student.latestAttendanceDate ? (
+                        <div>
+                          <p className="text-sm font-black text-[#2f2a25]">
+                            {student.latestAttendanceDate}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-[#806d62]">
+                            Ora {student.latestAttendanceTime || "-"}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-sm font-semibold text-[#b8a599]">
+                          Nu a scanat încă
+                        </p>
+                      )}
+                    </td>
+                    <td className="min-w-[220px] px-4 py-3">
+                      {student.grades?.length ? (
+                        <div className="grid gap-2">
+                          {student.grades.map((item) => (
+                            <div
+                              key={item.id}
+                              className="rounded-2xl border border-[#ead8c8] bg-[#fffaf4] px-3 py-2 text-sm"
+                            >
+                              <p className="font-black text-[#2f2a25]">
+                                {item.grade}
+                              </p>
+                              <p className="mt-1 text-xs font-semibold text-[#806d62]">
+                                {item.type}
+                                {item.date ? ` • ${item.date}` : ""}
+                                {item.time ? ` • ${item.time}` : ""}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm font-semibold text-[#b8a599]">
+                          Fără note
+                        </p>
+                      )}
                     </td>
                     {groupAttendanceData.disciplineTypes.map((type) => (
                       <td

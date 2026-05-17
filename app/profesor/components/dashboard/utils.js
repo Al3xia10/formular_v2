@@ -54,6 +54,7 @@ export function downloadExcelFile(filename, rows) {
   const headers = [
     "Nume",
     "Email",
+    "Observații",
     "Grupa",
     "An",
     "Serie",
@@ -61,6 +62,7 @@ export function downloadExcelFile(filename, rows) {
     "Tip disciplina",
     "Data",
     "Ora",
+    "Notă",
     "QR valid",
     "Link poza",
   ];
@@ -68,6 +70,7 @@ export function downloadExcelFile(filename, rows) {
   worksheet["!cols"] = [
     { wch: 28 },
     { wch: 32 },
+    { wch: 36 },
     { wch: 10 },
     { wch: 10 },
     { wch: 10 },
@@ -75,6 +78,7 @@ export function downloadExcelFile(filename, rows) {
     { wch: 18 },
     { wch: 14 },
     { wch: 12 },
+    { wch: 10 },
     { wch: 10 },
     { wch: 60 },
   ];
@@ -88,6 +92,9 @@ export function attendanceToExcelRows(attendance) {
   return attendance.map((item) => [
     item.nume,
     item.email,
+    item.observations?.length
+      ? item.observations.map((note) => note.content).join(" | ")
+      : item.observation || "",
     item.grupa,
     item.an,
     item.serie,
@@ -95,6 +102,7 @@ export function attendanceToExcelRows(attendance) {
     item.tip_disciplina,
     item.data,
     item.ora,
+    item.grade ?? "",
     item.valid_qr ? "Da" : "Nu",
     item.poza_url || "",
   ]);

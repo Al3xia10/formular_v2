@@ -125,7 +125,7 @@ export async function GET(req) {
     if (relevantYears.length > 0 && relevantGroups.length > 0) {
       const { data, error } = await supabaseAdmin
         .from("students")
-        .select("id, full_name, study_year, series, group_code")
+        .select("id, full_name, observation, study_year, series, group_code")
         .eq("is_active", true)
         .in("study_year", relevantYears)
         .in("group_code", relevantGroups)
@@ -155,6 +155,7 @@ export async function GET(req) {
       const row = {
         id: student.id,
         fullName: student.full_name,
+        observation: student.observation || "",
         studyYear: student.study_year,
         series: student.series || "",
         groupCode: student.group_code,
@@ -228,6 +229,7 @@ export async function GET(req) {
         student = {
           id: item.student_id || studentKey,
           fullName: item.nume,
+          observation: "",
           studyYear: item.an,
           series: item.serie || "",
           groupCode: item.grupa,

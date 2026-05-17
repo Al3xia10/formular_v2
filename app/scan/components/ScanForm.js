@@ -1,9 +1,9 @@
 "use client";
 
 import NextImage from "next/image";
-import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
 
 const EMPTY_ACADEMIC_OPTIONS = {
   disciplines: [],
@@ -14,71 +14,57 @@ const EMPTY_ACADEMIC_OPTIONS = {
 };
 
 const SELECT_ARROW_ICON = "/down-arrow.png";
+const MAX_UPLOAD_SIZE = 2 * 1024 * 1024;
+const TARGET_UPLOAD_SIZE = Math.round(1.8 * 1024 * 1024);
+
+function getFriendlySubmitError(errorMessage, reasonCode) {
+  switch (reasonCode) {
+    case "missing_student":
+      return "Te rugăm să scrii numele și să selectezi studentul corect din lista afișată.";
+    case "missing_series":
+      return "Te rugăm să selectezi seria înainte să trimiți prezența.";
+    case "missing_discipline":
+      return "Te rugăm să selectezi disciplina.";
+    case "missing_discipline_type":
+      return "Te rugăm să selectezi tipul disciplinei.";
+    case "missing_photo":
+      return "Te rugăm să faci o poză clară în sală înainte să trimiți prezența.";
+    case "qr_not_detected":
+      return "În poză nu se vede suficient de clar codul QR. Refă poza astfel încât QR-ul afișat de profesor să fie în cadru și lizibil.";
+    case "qr_decode_failed":
+      return "Nu am putut citi codul QR din poză. Refă poza fără blur și cu mai multă lumină.";
+    case "qr_mismatch":
+      return "Codul QR din poză nu se potrivește cu cel pe care l-ai scanat. Rescanează codul afișat acum și fă o poză nouă.";
+    case "session_expired":
+      return "Sesiunea QR nu mai este activă. Rescanează codul curent afișat de profesor și încearcă din nou.";
+    case "duplicate_submission":
+      return "Prezența ta a fost deja trimisă pentru această sesiune. Nu trebuie să retrimiți formularul.";
+    case "invalid_student":
+      return "Contul conectat nu corespunde studentului selectat. Verifică numele ales sau schimbă contul.";
+    case "invalid_discipline":
+      return "Disciplina selectată nu este validă. Alege din nou disciplina din listă.";
+    case "invalid_discipline_type":
+      return "Tipul disciplinei selectat nu este valid. Alege din nou din listă.";
+    case "invalid_academic_group":
+      return "Datele academice ale studentului nu se potrivesc cu catalogul. Verifică numele ales și seria.";
+    case "file_too_large":
+      return "Poza este prea mare. Refă poza puțin mai departe, fără zoom digital.";
+    case "invalid_file":
+      return "Fișierul selectat nu este valid. Deschide camera telefonului și fă o poză nouă.";
+    case "storage_upload_error":
+      return "Poza nu a putut fi încărcată. Încearcă din nou peste câteva secunde.";
+    case "database_insert_error":
+    case "server_error":
+      return "A apărut o problemă la salvare. Încearcă din nou. Dacă eroarea persistă, anunță profesorul.";
+    default:
+      return errorMessage || "A apărut o eroare la trimiterea prezenței.";
+  }
+}
 
 export default function ScanForm() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const rawToken = searchParams.get("token");
-
-    // Suport fallback pentru cazuri când tokenul e trimis ca state=token%3DXYZ
-    const stateParam = searchParams.get("state");
-    const extractedToken = stateParam?.startsWith("token=")
-      ? decodeURIComponent(stateParam.split("token=")[1])
-      : null;
-
-    const tokenFromQuery = rawToken || extractedToken;
-
-    if (tokenFromQuery) {
-      sessionStorage.setItem("qrToken", tokenFromQuery);
-      setQrToken(tokenFromQuery);
-      console.log("🔐 Token detectat din URL sau state:", tokenFromQuery);
-    } else {
-      const savedToken = sessionStorage.getItem("qrToken");
-      if (savedToken) {
-        setQrToken(savedToken);
-        console.log("💾 Token din sessionStorage:", savedToken);
-      }
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      const savedToken =
-        searchParams.get("token") || sessionStorage.getItem("qrToken");
-
-      // Salvează tokenul în session storage pentru a supraviețui redirectului de login
-      if (savedToken) {
-        sessionStorage.setItem("qrToken", savedToken);
-      }
-
-      const callback = savedToken
-        ? `/scan?token=${encodeURIComponent(savedToken)}`
-        : `/scan`;
-
-      // ...existing code...
-      if (!sessionStorage.getItem("redirectedToLogin")) {
-        sessionStorage.setItem("redirectedToLogin", "true");
-        router.replace(
-          `/auth/signin?callbackUrl=${encodeURIComponent(callback)}`,
-        );
-      }
-      // ...existing code...
-    }
-
-    if (status === "authenticated") {
-      const hasTokenInUrl = !!searchParams.get("token");
-      const savedToken = sessionStorage.getItem("qrToken");
-
-      if (!hasTokenInUrl && savedToken) {
-        router.replace(`/scan?token=${encodeURIComponent(savedToken)}`);
-      }
-
-      sessionStorage.removeItem("redirectedToLogin");
-    }
-  }, [status, searchParams, router]);
 
   const [formData, setFormData] = useState({
     nume: "",
@@ -103,6 +89,58 @@ export default function ScanForm() {
   const [studentOptions, setStudentOptions] = useState([]);
   const [studentSearchLoading, setStudentSearchLoading] = useState(false);
   const [isSeriesLocked, setIsSeriesLocked] = useState(false);
+
+  useEffect(() => {
+    const rawToken = searchParams.get("token");
+    const stateParam = searchParams.get("state");
+    const extractedToken = stateParam?.startsWith("token=")
+      ? decodeURIComponent(stateParam.split("token=")[1])
+      : null;
+    const tokenFromQuery = rawToken || extractedToken;
+
+    if (tokenFromQuery) {
+      sessionStorage.setItem("qrToken", tokenFromQuery);
+      setQrToken(tokenFromQuery);
+    } else {
+      const savedToken = sessionStorage.getItem("qrToken");
+      if (savedToken) {
+        setQrToken(savedToken);
+      }
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      const savedToken =
+        searchParams.get("token") || sessionStorage.getItem("qrToken");
+
+      if (savedToken) {
+        sessionStorage.setItem("qrToken", savedToken);
+      }
+
+      const callback = savedToken
+        ? `/scan?token=${encodeURIComponent(savedToken)}`
+        : "/scan";
+
+      if (!sessionStorage.getItem("redirectedToLogin")) {
+        sessionStorage.setItem("redirectedToLogin", "true");
+        router.replace(
+          `/auth/signin?callbackUrl=${encodeURIComponent(callback)}`,
+        );
+      }
+    }
+
+    if (status === "authenticated") {
+      const hasTokenInUrl = !!searchParams.get("token");
+      const savedToken = sessionStorage.getItem("qrToken");
+
+      if (!hasTokenInUrl && savedToken) {
+        router.replace(`/scan?token=${encodeURIComponent(savedToken)}`);
+      }
+
+      sessionStorage.removeItem("redirectedToLogin");
+    }
+  }, [status, searchParams, router]);
 
   useEffect(() => {
     if (status !== "authenticated") {
@@ -168,9 +206,7 @@ export default function ScanForm() {
       try {
         const response = await fetch(
           `/api/students/search?q=${encodeURIComponent(query)}`,
-          {
-            cache: "no-store",
-          },
+          { cache: "no-store" },
         );
         const data = await response.json();
 
@@ -217,6 +253,7 @@ export default function ScanForm() {
   };
 
   const handleStudentSearchChange = (value) => {
+    setTrimis(false);
     setStudentSearch(value);
     setStudentId("");
     setIsSeriesLocked(false);
@@ -230,6 +267,7 @@ export default function ScanForm() {
   };
 
   const handleSelectStudent = (student) => {
+    setTrimis(false);
     setStudentId(student.id);
     setStudentSearch(student.fullName);
     setStudentOptions([]);
@@ -244,11 +282,8 @@ export default function ScanForm() {
     }));
   };
 
-  const MAX_UPLOAD_SIZE = 2 * 1024 * 1024;
-  const TARGET_UPLOAD_SIZE = Math.round(1.8 * 1024 * 1024);
-
-  const renderCompressedImage = (file, maxWidth, maxHeight, quality) => {
-    return new Promise((resolve, reject) => {
+  const renderCompressedImage = (file, maxWidth, maxHeight, quality) =>
+    new Promise((resolve, reject) => {
       const image = new window.Image();
       const reader = new FileReader();
 
@@ -281,11 +316,12 @@ export default function ScanForm() {
           canvas.toBlob(
             (blob) => {
               if (blob) {
-                const compressedFile = new File([blob], file.name, {
-                  type: file.type,
-                  lastModified: Date.now(),
-                });
-                resolve(compressedFile);
+                resolve(
+                  new File([blob], file.name, {
+                    type: file.type,
+                    lastModified: Date.now(),
+                  }),
+                );
               } else {
                 reject(new Error("Compression failed"));
               }
@@ -300,7 +336,6 @@ export default function ScanForm() {
       reader.onerror = () => reject(new Error("File read error"));
       reader.readAsDataURL(file);
     });
-  };
 
   const prepareImageForUpload = async (file) => {
     if (file.size <= TARGET_UPLOAD_SIZE) {
@@ -352,6 +387,7 @@ export default function ScanForm() {
 
     try {
       const preparedFile = await prepareImageForUpload(file);
+      setTrimis(false);
       setPoza(preparedFile);
       setError(null);
     } catch (photoError) {
@@ -360,16 +396,53 @@ export default function ScanForm() {
     }
   };
 
+  const validateBeforeSubmit = () => {
+    if (!studentId) {
+      return {
+        reasonCode: "missing_student",
+        message:
+          "Te rugăm să scrii numele și să selectezi studentul corect din lista afișată.",
+      };
+    }
+
+    if (!formData.serie) {
+      return {
+        reasonCode: "missing_series",
+        message: "Te rugăm să selectezi seria înainte să trimiți prezența.",
+      };
+    }
+
+    if (!formData.disciplina) {
+      return {
+        reasonCode: "missing_discipline",
+        message: "Te rugăm să selectezi disciplina.",
+      };
+    }
+
+    if (!formData.tipDisciplina) {
+      return {
+        reasonCode: "missing_discipline_type",
+        message: "Te rugăm să selectezi tipul disciplinei.",
+      };
+    }
+
+    if (!poza) {
+      return {
+        reasonCode: "missing_photo",
+        message:
+          "Te rugăm să faci o poză clară în sală înainte să trimiți prezența.",
+      };
+    }
+
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!poza) {
-      setError("Te rugăm să faci o poză în clasă.");
-      return;
-    }
-
-    if (!studentId) {
-      setError("Te rugăm să selectezi numele din lista de studenți.");
+    const validationError = validateBeforeSubmit();
+    if (validationError) {
+      setError(validationError.message);
       return;
     }
 
@@ -383,6 +456,7 @@ export default function ScanForm() {
     );
     formDataToSend.append("studentId", studentId);
     formDataToSend.append("poza", poza);
+
     if (qrToken) {
       formDataToSend.append("qrToken", qrToken);
     }
@@ -394,31 +468,43 @@ export default function ScanForm() {
       });
       const raspunsData = await raspuns.json();
 
-      if (raspuns.ok) {
-        setTrimis(true);
-        setFormData((current) => ({
-          nume: current.nume,
-          grupa: current.grupa,
-          an: current.an,
-          serie: current.serie,
-          disciplina: "",
-          tipDisciplina: "",
-        }));
-        setPoza(null);
-        setQrToken("");
-        sessionStorage.removeItem("qrToken");
-        setError(null);
-      } else {
-        throw new Error(
-          raspunsData.error || "A apărut o eroare la trimiterea prezenței",
+      if (!raspuns.ok) {
+        const nextMessage = getFriendlySubmitError(
+          raspunsData.error,
+          raspunsData.reasonCode,
         );
+        const nextError = new Error(nextMessage);
+        nextError.reasonCode = raspunsData.reasonCode || null;
+        throw nextError;
       }
+
+      setTrimis(true);
+      setFormData((current) => ({
+        nume: current.nume,
+        grupa: current.grupa,
+        an: current.an,
+        serie: current.serie,
+        disciplina: "",
+        tipDisciplina: "",
+      }));
+      setPoza(null);
+      setQrToken("");
+      sessionStorage.removeItem("qrToken");
+      setError(null);
     } catch (err) {
-      if (err.message?.toLowerCase().includes("codul qr")) {
+      if (
+        err.reasonCode === "qr_mismatch" ||
+        err.reasonCode === "session_expired"
+      ) {
         sessionStorage.removeItem("qrToken");
         setQrToken("");
       }
-      setError(err.message);
+      setError(
+        getFriendlySubmitError(
+          err.message,
+          err.reasonCode || null,
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -434,8 +520,13 @@ export default function ScanForm() {
     router.replace(`/auth/signin?callbackUrl=${encodeURIComponent(callback)}`);
   };
 
-  if (status === "loading") return <p className="text-center">Se încarcă...</p>;
-  if (status !== "authenticated") return null;
+  if (status === "loading") {
+    return <p className="text-center">Se încarcă...</p>;
+  }
+
+  if (status !== "authenticated") {
+    return null;
+  }
 
   return (
     <main className="min-h-screen bg-[#fffaf4] px-3 py-4 text-[#2f2a25] sm:px-4 sm:py-8">
@@ -443,11 +534,15 @@ export default function ScanForm() {
         <div className="w-full overflow-hidden rounded-[1.75rem] border border-orange-100 bg-white shadow-2xl shadow-orange-100/70">
           <div className="p-4 sm:p-6">
             <div className="mb-3 text-center">
-              <h1 className="text-2xl font-black tracking-tight text-[#2f2a25] sm:text-3xl mt-4">
-                Salut{session?.user?.name ? `, ${session.user.name}` : ""} 👋
+              <h1 className="mt-4 text-2xl font-black tracking-tight text-[#2f2a25] sm:text-3xl">
+                {trimis
+                  ? "Confirmare prezență"
+                  : `Salut${session?.user?.name ? `, ${session.user.name}` : ""} 👋`}
               </h1>
               <p className="mx-auto mt-1 max-w-xs text-[14px] leading-5 text-[#806d62] sm:text-sm">
-                Completează datele de mai jos și atașează poza făcută în sală.
+                {trimis
+                  ? "Prezența a fost înregistrată cu succes pentru această sesiune."
+                  : "Completează datele de mai jos și atașează poza făcută în sală."}
               </p>
 
               {!trimis && (
@@ -471,16 +566,53 @@ export default function ScanForm() {
             </div>
 
             {trimis ? (
-              <div className="rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-8 text-center shadow-lg shadow-emerald-100/60">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-3xl text-white shadow-lg shadow-emerald-200">
-                  ✓
+              <div className="mt-8">
+                <div
+                  className="overflow-hidden rounded-[1.75rem] border p-5 text-center sm:p-6"
+                  style={{
+                    borderColor: "#d9f7e8",
+                    background:
+                      "linear-gradient(180deg, rgba(243,255,249,0.98) 0%, rgba(255,255,255,1) 100%)",
+                    boxShadow: "0 22px 48px rgba(79, 201, 144, 0.16)",
+                  }}
+                >
+                  <div
+                    className="mx-auto flex h-[88px] w-[88px] items-center justify-center rounded-full"
+                    style={{
+                      background:
+                        "linear-gradient(180deg, #21c97e 0%, #14a765 100%)",
+                      boxShadow: "0 18px 34px rgba(33, 201, 126, 0.24)",
+                    }}
+                  >
+                    <span className="text-4xl font-black text-white">✓</span>
+                  </div>
+
+                  <div className="mt-5 inline-flex rounded-full border border-[#cdeedd] bg-white px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-[#13945d]">
+                    Trimitere reușită
+                  </div>
+
+                  <h2 className="mt-4 text-[2rem] font-black leading-tight text-[#155c3d]">
+                    Prezența ta a fost
+                    <br />
+                    înregistrată
+                  </h2>
+
+                  <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-[#438164]">
+                    Mulțumim. Datele au fost trimise cu succes și sunt salvate
+                    în sistem.
+                  </p>
+
+                  <div className="mt-5 grid gap-3 text-left">
+                    <div className="rounded-2xl border border-[#e2f5ea] bg-white px-4 py-3">
+                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#17a36a]">
+                        Status
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-[#2b5a45]">
+                        Confirmarea a fost trimisă cu succes.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <h2 className="text-2xl font-black text-emerald-800">
-                  Prezența ta a fost înregistrată!
-                </h2>
-                <p className="mt-3 text-sm leading-6 text-emerald-700">
-                  Mulțumim. Datele au fost trimise cu succes.
-                </p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4 pb-2">
@@ -708,7 +840,7 @@ export default function ScanForm() {
 
                   <label
                     htmlFor="poza"
-                    className={`flex h-12 cursor-pointer items-center justify-center rounded-2xl bg-[#ff8a3d] px-4 text-center text-sm font-black text-white shadow-lg shadow-orange-200 transition active:scale-95 hover:bg-[#f97316] ${
+                    className={`mt-3 flex h-12 cursor-pointer items-center justify-center rounded-2xl bg-[#ff8a3d] px-4 text-center text-sm font-black text-white shadow-lg shadow-orange-200 transition active:scale-95 hover:bg-[#f97316] ${
                       loading ? "cursor-not-allowed opacity-50" : ""
                     }`}
                   >
